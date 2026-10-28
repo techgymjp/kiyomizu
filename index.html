@@ -4,7 +4,10 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 	<title>清水の舞台から飛び降りるつもり</title>
-	<meta name="description" content="清水の舞台からハングライダーで飛び降りて、3Dで再現した京都の空を飛び回るゲーム" />
+	<meta name="description" content="清水の舞台からハングライダーで飛び降りて、3Dで再現した紅葉の京都の空を飛び回るゲーム" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet" />
 	<link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
@@ -12,124 +15,136 @@
 
 	<!-- HUD -->
 	<div id="hud" class="hidden">
-		<div class="panel left">
-			<div class="row"><span class="k">対地高度</span><span class="v" id="hud-agl">0</span><span class="u">m</span></div>
-			<div class="row"><span class="k">標高</span><span class="v small" id="hud-alt">0</span><span class="u">m</span></div>
-			<div class="row"><span class="k">速度</span><span class="v" id="hud-speed">0</span><span class="u">km/h</span></div>
-			<div class="row"><span class="k">昇降</span><span class="v small" id="hud-vario">0</span><span class="u">m/s</span></div>
+		<div class="hud-left">
+			<div class="pill score-pill">
+				<div class="cp"><span class="icon">🎈</span><span class="v" id="hud-cp">0</span><span class="u" id="hud-cp-total">/ 0</span></div>
+				<div class="sub"><span id="hud-dist">0.00</span> km ・ <span id="hud-time">0:00</span></div>
+			</div>
+			<div class="pill gauges">
+				<div class="g"><span class="k">高さ</span><span class="v" id="hud-agl">0</span><span class="u">m</span></div>
+				<div class="g"><span class="k">はやさ</span><span class="v" id="hud-speed">0</span><span class="u">km/h</span></div>
+				<div class="g"><span class="k">上昇</span><span class="v" id="hud-vario">0</span><span class="u">m/s</span></div>
+				<div class="alt">標高 <span id="hud-alt">0</span>m</div>
+			</div>
 		</div>
-		<div class="panel right">
-			<div class="row"><span class="k">チェックポイント</span><span class="v" id="hud-cp">0</span><span class="u" id="hud-cp-total">/ 0</span></div>
-			<div class="row"><span class="k">飛行距離</span><span class="v" id="hud-dist">0.00</span><span class="u">km</span></div>
-			<div class="row"><span class="k">飛行時間</span><span class="v small" id="hud-time">0:00</span></div>
+		<div id="target" class="pill">
+			<div id="target-arrow">➤</div>
+			<div>
+				<div id="target-name">-</div>
+				<div id="target-info">-</div>
+			</div>
 		</div>
-		<div id="target">
-			<div id="target-arrow">▲</div>
-			<div id="target-name">-</div>
-			<div id="target-info">-</div>
-		</div>
-		<div id="jet">
-			<div class="label">JET <span id="jet-sec">0.0</span>秒 <small>[Space / Shift]</small></div>
-			<div class="bar"><div id="jet-fill"></div></div>
+		<div id="wipe"><span class="wipe-label">● 前方カメラ</span></div>
+		<div id="turbo" class="pill">
+			<div class="turbo-head"><span class="turbo-title">🚀 ターボ</span><span id="turbo-count">×0</span><small>Space / Shift で噴射</small></div>
+			<div class="turbo-bar"><div id="turbo-fill"></div></div>
 		</div>
 		<canvas id="minimap" width="220" height="220"></canvas>
-		<div id="stall" class="hidden">失速！ 機首を下げて！</div>
+		<div id="stall" class="hidden">⚠ 失速！ ↓で機首を下げて！</div>
 		<div id="message"></div>
 		<div id="hint"></div>
-		<div class="credit">地形・空中写真: 国土地理院 ／ 建物: 国土交通省 Project PLATEAU</div>
+		<div class="credit">地形・空中写真: 国土地理院 ／ 建物: 国土交通省 Project PLATEAU をもとに作成</div>
 	</div>
 
 	<!-- タッチ操作 -->
 	<div id="touch" class="hidden">
 		<div id="stick"><div id="stick-knob"></div></div>
-		<button id="touch-jet">JET</button>
+		<button id="touch-jet">🚀<br />ターボ</button>
 		<button id="touch-cam">視点</button>
 	</div>
 
-	<!-- ローディング / タイトル -->
+	<!-- タイトル -->
 	<div id="title" class="screen">
-		<div class="card">
-			<h1><span class="small">清水の舞台から</span>飛び降りるつもり</h1>
-			<p class="lead">ハングライダーで清水の舞台から飛び立ち、3Dで再現した京都の空を飛び回ろう。<br />観光名所のアドバルーンを割るとチェックポイント通過＆ジェットをゲット！</p>
+		<div class="floaters" aria-hidden="true"><span>🍁</span><span>🎈</span><span>🍂</span><span>🎈</span><span>🍁</span><span>🎆</span></div>
+		<div class="card title-card">
+			<h1>
+				<span class="l1">清水の舞台から</span>
+				<span class="l2"><b>飛</b><b>び</b><b>降</b><b>り</b><b>る</b><b>つ</b><b>も</b><b>り</b></span>
+			</h1>
+			<p class="lead">ハングライダーで清水の舞台からダイブ！<br />紅葉まっさかりの京都の空を飛びまわって、<br />名所のアドバルーンを割りまくろう 🎈</p>
 			<div id="loading">
 				<div class="bar"><div id="load-fill"></div></div>
 				<div id="load-text">京都の地形を読み込み中…</div>
 			</div>
 			<div id="title-buttons" class="hidden">
-				<button id="btn-start" class="primary">飛び降りる！</button>
-				<button id="btn-ranking">ランキング</button>
-				<button id="btn-howto">遊び方</button>
+				<button id="btn-start" class="btn big">🪂 飛び降りる！</button>
+				<div class="row-btns">
+					<button id="btn-ranking" class="btn sub">🏆 ランキング</button>
+					<button id="btn-howto" class="btn sub">❓ 遊び方</button>
+				</div>
 			</div>
 			<div class="settings">
 				<label>画質
 					<select id="opt-quality">
-						<option value="high">高 (LOD2 テクスチャ付き建物)</option>
-						<option value="low">軽量 (LOD1 建物)</option>
+						<option value="high">きれい (影あり)</option>
+						<option value="low">かるい (影なし)</option>
 					</select>
 				</label>
-				<label><input type="checkbox" id="opt-invert" /> 上下操作を反転</label>
+				<label><input type="checkbox" id="opt-mute" /> 音を消す</label>
 			</div>
 			<p class="credit-line">
 				地形・空中写真: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル</a>
-				／ 3D建物: <a href="https://www.mlit.go.jp/plateau/" target="_blank" rel="noopener">国土交通省 Project PLATEAU</a>（京都市 3D都市モデル）
+				／ 建物: <a href="https://www.mlit.go.jp/plateau/" target="_blank" rel="noopener">国土交通省 Project PLATEAU</a>（京都市 3D都市モデル）をもとに作成
 			</p>
 		</div>
 	</div>
 
 	<div id="howto" class="screen hidden">
 		<div class="card">
-			<h2>遊び方</h2>
-			<ul>
-				<li><b>目的:</b> できるだけ多くのアドバルーン(チェックポイント)を割り、遠くまで飛ぼう。地面や建物に降りたらゲーム終了。</li>
-				<li><b>↑ / W:</b> 機首上げ（上昇・減速） <b>↓ / S:</b> 機首下げ（下降・加速）</li>
-				<li><b>← → / A D:</b> 旋回</li>
-				<li><b>Space / Shift:</b> ジェット噴射（押している間だけ。好きなタイミングで使おう）</li>
-				<li><b>C:</b> 視点切替（パイロット目線 ⇔ 後方視点） <b>M:</b> 音のON/OFF <b>P:</b> 一時停止</li>
-				<li>アドバルーンを割ると <b>ジェット燃料 +5秒</b>。</li>
-				<li>光の粒が昇っている場所は <b>上昇気流</b>。中で旋回すると高度を稼げる。</li>
-				<li>速度が落ちすぎると <b>失速</b> して急降下するので注意。</li>
-				<li>スマホ: 左下のスティックで操縦、右下の JET ボタンで噴射。</li>
+			<h2>❓ 遊び方</h2>
+			<ul class="howto">
+				<li><span class="key">🎯</span>名所のアドバルーンを割ってチェックポイント通過！ 割ると花火があがって<b>ターボ +1</b>。</li>
+				<li><span class="key">↑ ↓</span>↑で上昇、↓で下降（スピードアップ）</li>
+				<li><span class="key">← →</span>左右に旋回</li>
+				<li><span class="key">Space</span>ターボ噴射（押している間だけ）。最初から<b>3つ</b>持っています</li>
+				<li><span class="key">C</span>視点切替（後ろから ⇔ パイロット目線）</li>
+				<li><span class="key">M / P</span>音のON/OFF ／ 一時停止</li>
+				<li><span class="key">✨</span>光の粒が昇る場所は<b>上昇気流</b>。中で旋回すると高度アップ</li>
+				<li><span class="key">⚠</span>地面や建物に降りたらゲーム終了。スピードが落ちすぎると失速！</li>
+				<li><span class="key">📱</span>スマホは左下スティックで操縦、右のボタンでターボ</li>
 			</ul>
-			<button class="close primary">閉じる</button>
+			<button class="close btn big">OK！</button>
 		</div>
 	</div>
 
 	<div id="ranking" class="screen hidden">
 		<div class="card">
-			<h2>ランキング <small>(この端末の記録)</small></h2>
+			<h2>🏆 ランキング <small>(この端末の記録)</small></h2>
 			<table>
-				<thead><tr><th>#</th><th>名前</th><th>CP</th><th>距離</th><th>日付</th></tr></thead>
+				<thead><tr><th>#</th><th>名前</th><th>🎈</th><th>距離</th><th>日付</th></tr></thead>
 				<tbody id="ranking-body"></tbody>
 			</table>
-			<button class="close primary">閉じる</button>
+			<button class="close btn big">とじる</button>
 		</div>
 	</div>
 
 	<div id="result" class="screen hidden">
-		<div class="card">
+		<div class="card result-card">
+			<div id="rank-banner" class="hidden">🎉 ランキング <span id="rank-no">1</span> 位！ 🎉</div>
 			<h2 id="result-title">着陸！</h2>
 			<p id="result-reason"></p>
 			<div class="score">
-				<div><span class="k">チェックポイント</span><span class="v" id="result-cp">0</span></div>
-				<div><span class="k">飛行距離</span><span class="v" id="result-dist">0</span></div>
-				<div><span class="k">飛行時間</span><span class="v" id="result-time">0</span></div>
+				<div class="s1"><span class="k">🎈 チェックポイント</span><span class="v" id="result-cp">0</span></div>
+				<div class="s2"><span class="k">📏 飛行距離</span><span class="v" id="result-dist">0</span></div>
+				<div class="s3"><span class="k">⏱ 飛行時間</span><span class="v" id="result-time">0</span></div>
 			</div>
 			<p id="result-spots"></p>
-			<div id="result-rank"></div>
 			<div class="name-row">
 				<input id="result-name" maxlength="12" placeholder="なまえ" />
-				<button id="btn-save">記録する</button>
+				<button id="btn-save" class="btn sub">記録する</button>
 			</div>
 			<div class="buttons">
-				<button id="btn-retry" class="primary">もう一度飛び降りる</button>
-				<button id="btn-share">結果をXでシェア</button>
-				<button id="btn-to-title">タイトルへ</button>
+				<button id="btn-retry" class="btn big">🪂 もう一度飛び降りる</button>
+				<div class="row-btns">
+					<button id="btn-share" class="btn sub">𝕏 シェア</button>
+					<button id="btn-to-title" class="btn sub">🏠 タイトル</button>
+				</div>
 			</div>
 		</div>
 	</div>
 
 	<div id="pause" class="screen hidden">
-		<div class="card"><h2>一時停止</h2><button id="btn-resume" class="primary">再開 (P)</button></div>
+		<div class="card"><h2>⏸ 一時停止</h2><button id="btn-resume" class="btn big">再開 (P)</button></div>
 	</div>
 
 	<script type="module" src="./src/main.js"></script>

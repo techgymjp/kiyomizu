@@ -8,10 +8,10 @@
   },
   "dependencies": {
     "3d-tiles-renderer": "0.4.18",
-    "three": "0.180.0",
-    "three-mesh-bvh": "0.9.1"
+    "three": "0.180.0"
   },
   "devDependencies": {
+    "draco3d": "^1.5.7",
     "vite": "6.4.5"
   },
   "private": true,

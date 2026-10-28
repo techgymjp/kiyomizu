@@ -3,7 +3,7 @@ import {
 	Group, Mesh, SphereGeometry, MeshStandardMaterial, PlaneGeometry, MeshBasicMaterial,
 	CanvasTexture, SRGBColorSpace, DoubleSide, BufferGeometry, Float32BufferAttribute,
 	LineBasicMaterial, Line, Sprite, SpriteMaterial, Points, PointsMaterial, Vector3,
-	AdditiveBlending, CylinderGeometry, Color,
+	AdditiveBlending, Color,
 } from 'three';
 import { geoToWorld } from './geo.js';
 
@@ -199,18 +199,10 @@ export class Thermals {
 			const geom = new BufferGeometry();
 			geom.setAttribute('position', new Float32BufferAttribute(pos, 3));
 			const points = new Points(geom, new PointsMaterial({
-				color: 0xfff1c4, size: 2.2, transparent: true, opacity: 0.35, depthWrite: false, blending: AdditiveBlending,
+				color: 0xfff1c4, size: 2.6, transparent: true, opacity: 0.5, depthWrite: false, blending: AdditiveBlending,
 			}));
 			points.frustumCulled = false;
 			this.group.add(points);
-			// 足元の目印
-			const ring = new Mesh(
-				new CylinderGeometry(t.r, t.r, 1, 48, 1, true),
-				new MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.06, side: DoubleSide, depthWrite: false }),
-			);
-			ring.scale.y = 400;
-			ring.position.copy(t.base).add(new Vector3(0, 200, 0));
-			this.group.add(ring);
 			return { points, seed, t };
 		});
 	}

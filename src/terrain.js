@@ -3,7 +3,7 @@ import {
 	BufferGeometry, Float32BufferAttribute, Mesh, MeshLambertMaterial, Group,
 	CanvasTexture, SRGBColorSpace, Vector3,
 } from 'three';
-import { geoToWorld, lonToTileX, latToTileY, tileXToLon, tileYToLat } from './geo.js';
+import { geoToWorld, worldToGeo, lonToTileX, latToTileY, tileXToLon, tileYToLat } from './geo.js';
 import { loadImage } from './loader.js';
 
 const DEM_URL = (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/dem_png/${z}/${x}/${y}.png`;
@@ -18,9 +18,9 @@ const RING = 1;
 const FINE_Z = 14;
 const COARSE_Z = 12;
 const SEGMENTS = 64;
-const HI_RES_Z = 16; // 近くのチャンクは z16 の写真に差し替える
-const HI_RES_DIST = 2600; // m
-const HI_RES_RELEASE = 4200; // m
+// 近くのチャンクは高解像度の写真に差し替える [ズーム, この距離(m)より近いとき]
+const HI_RES = [[17, 1300], [16, 3000]];
+const HI_RES_HYSTERESIS = 1200;
 
 function decodeDem(bitmap) {
 	const canvas = new OffscreenCanvas(256, 256);
@@ -38,6 +38,44 @@ function decodeDem(bitmap) {
 	return out;
 }
 
+const _p = new Vector3();
+const _g = {};
+
+// 空中写真の緑(木々)を紅葉の色に塗り替える
+function autumn(material) {
+	material.onBeforeCompile = (shader) => {
+		shader.vertexShader = shader.vertexShader
+			.replace('#include <common>', '#include <common>\nvarying vec3 vWorld;')
+			.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+		shader.fragmentShader = shader.fragmentShader
+			.replace('#include <common>', `#include <common>
+				varying vec3 vWorld;
+				float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+				float vnoise(vec2 p) {
+					vec2 i = floor(p), f = fract(p);
+					f = f * f * (3.0 - 2.0 * f);
+					return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y);
+				}`)
+			.replace('#include <map_fragment>', `#include <map_fragment>
+				{
+					vec3 c = diffuseColor.rgb;
+					float green = c.g - max(c.r, c.b);
+					float m = smoothstep(0.005, 0.05, green);
+					float n = vnoise(vWorld.xz / 18.0) * 0.6 + vnoise(vWorld.xz / 70.0) * 0.4;
+					// 赤・朱・橙・黄、ところどころ常緑樹
+					vec3 red = vec3(0.85, 0.06, 0.05);
+					vec3 orange = vec3(0.95, 0.38, 0.05);
+					vec3 yellow = vec3(0.98, 0.72, 0.12);
+					vec3 everg = vec3(0.16, 0.32, 0.12);
+					vec3 a = n < 0.4 ? mix(red, orange, n / 0.4) : n < 0.62 ? mix(orange, yellow, (n - 0.4) / 0.22) : mix(yellow, everg, smoothstep(0.66, 0.9, n));
+					float lum = dot(c, vec3(0.3, 0.59, 0.11));
+					diffuseColor.rgb = mix(c, a * (0.35 + lum * 1.9), m * 0.9);
+				}`);
+	};
+	material.customProgramCacheKey = () => 'autumn';
+	return material;
+}
+
 class Chunk {
 	constructor(z, x, y) {
 		this.z = z;
@@ -48,6 +86,7 @@ class Chunk {
 		this.baseTexture = null;
 		this.hiTexture = null;
 		this.hiLoading = false;
+		this.hiLevel = 0;
 		const lon = tileXToLon(x + 0.5, z);
 		const lat = tileYToLat(y + 0.5, z);
 		this.center = geoToWorld(lat, lon, 0);
@@ -204,11 +243,11 @@ export class Terrain {
 		geom.setIndex(index);
 		geom.computeVertexNormals();
 		geom.computeBoundingSphere();
-		const mat = new MeshLambertMaterial({ color: 0x6b7a5a });
+		const mat = autumn(new MeshLambertMaterial({ color: 0x6b7a5a }));
 		chunk.mesh = new Mesh(geom, mat);
 		chunk.mesh.matrixAutoUpdate = false;
 		chunk.mesh.updateMatrix();
-		chunk.mesh.receiveShadow = false;
+		chunk.mesh.receiveShadow = true;
 		this.group.add(chunk.mesh);
 	}
 
@@ -237,32 +276,58 @@ export class Terrain {
 		return tex;
 	}
 
-	// 毎フレーム呼ぶ: 近くのチャンクの写真を高解像度化
+	// 毎フレーム呼ぶ: 近くのチャンクほど高解像度の写真に差し替える
+	desiredLevel(d) {
+		for (const [z, dist] of HI_RES) if (d < dist) return z;
+		return 0;
+	}
+
 	update(playerPos) {
 		this.player.copy(playerPos);
 		if (!this.ready) return;
-		for (const c of this.fine.values()) {
-			const d = Math.hypot(c.center.x - playerPos.x, c.center.z - playerPos.z);
-			if (d < HI_RES_DIST && !c.hiTexture && !c.hiLoading) {
+		let loading = 0;
+		for (const c of this.fine.values()) if (c.hiLoading) loading++;
+		const list = [...this.fine.values()]
+			.map((c) => ({ c, d: Math.hypot(c.center.x - playerPos.x, c.center.z - playerPos.z) }))
+			.sort((a, b) => a.d - b.d);
+		for (const { c, d } of list) {
+			const want = this.desiredLevel(d);
+			// 離れたら解放 (少し余裕を持たせる)
+			if (c.hiLevel && want < c.hiLevel && this.desiredLevel(d - HI_RES_HYSTERESIS) < c.hiLevel) {
+				c.hiTexture.dispose();
+				c.hiTexture = null;
+				c.hiLevel = 0;
+				c.mesh.material.map = c.baseTexture;
+				c.mesh.material.needsUpdate = true;
+			}
+			if (want > (c.hiLevel || 0) && !c.hiLoading && loading < 3) {
 				c.hiLoading = true;
-				this.loadPhoto(c, HI_RES_Z).then((tex) => {
+				loading++;
+				this.loadPhoto(c, want).then((tex) => {
 					c.hiLoading = false;
-					if (Math.hypot(c.center.x - this.player.x, c.center.z - this.player.z) > HI_RES_RELEASE) {
+					const now = this.desiredLevel(Math.hypot(c.center.x - this.player.x, c.center.z - this.player.z) - HI_RES_HYSTERESIS);
+					if (now < want) {
 						tex.dispose();
 						return;
 					}
+					c.hiTexture?.dispose();
 					c.hiTexture = tex;
+					c.hiLevel = want;
 					c.mesh.material.map = tex;
 					c.mesh.material.color.set(0xffffff);
 					c.mesh.material.needsUpdate = true;
 				});
-			} else if (d > HI_RES_RELEASE && c.hiTexture) {
-				c.hiTexture.dispose();
-				c.hiTexture = null;
-				c.mesh.material.map = c.baseTexture;
-				c.mesh.material.needsUpdate = true;
 			}
 		}
+	}
+
+	// ワールド座標 (x, z) の地表の高さ (ワールドの y)
+	heightAtWorld(x, z) {
+		_p.set(x, 0, z);
+		worldToGeo(_p, _g);
+		const h = this.heightAt(_g.lat, _g.lon);
+		// 標高 h の点のワールド y (地球の丸みの分だけ補正)
+		return geoToWorld(_g.lat, _g.lon, h, _p).y;
 	}
 
 	// 緯度経度における地表の標高(m)

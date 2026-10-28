@@ -20,7 +20,7 @@
 | ↓ / S | 機首下げ（下降・加速） |
 | ← → / A D | 旋回 |
 | Space / Shift | ジェット噴射 |
-| C | 視点切替（パイロット目線 / 後方） |
+| C | 視点切替（後方視点 / パイロット目線） |
 | M | 音の ON/OFF |
 | P / Esc | 一時停止 |
 
@@ -30,12 +30,13 @@
 
 | データ | 提供元 | 用途 |
 | --- | --- | --- |
-| 3D 都市モデル 京都市 建築物 (LOD1/LOD2, 3D Tiles, 2025年度) | [国土交通省 Project PLATEAU](https://www.mlit.go.jp/plateau/) | 京都市街の建物 |
+| 3D 都市モデル 京都市 建築物 (LOD1, 3D Tiles, 2025年度) | [国土交通省 Project PLATEAU](https://www.mlit.go.jp/plateau/) | 京都市街の建物の外形・高さ |
 | 標高タイル (dem_png) | [国土地理院 地理院タイル](https://maps.gsi.go.jp/development/ichiran.html) | 地形 |
 | 全国最新写真（シームレス） | 国土地理院 地理院タイル | 地表の空中写真 |
 | 淡色地図 | 国土地理院 地理院タイル | ミニマップ |
 
-データはすべてブラウザから各提供元の配信サーバーへ直接読み込んでいます。
+建物は PLATEAU のデータから外形・高さ・種別だけを取り出した軽量データ（`public/buildings/`）を同梱し、
+ゲーム内で瓦屋根・壁・窓をつけて描き直しています。地形・空中写真は国土地理院の配信サーバーから直接読み込みます。
 PLATEAU のデータは [PLATEAU Policy](https://www.mlit.go.jp/plateau/site-policy/)、地理院タイルは[国土地理院コンテンツ利用規約](https://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html)に従い出典を表示しています。
 
 ## 開発
@@ -45,14 +46,15 @@ npm install
 npm run dev
 ```
 
-`main` ブランチへの push で GitHub Actions がビルドし、`gh-pages` ブランチへ公開します。
+`main`（または `claude/funny-maxwell-44oft1`）ブランチへの push で GitHub Actions がビルドし、`gh-pages` ブランチへ公開します。
 
 ### 構成
 
 - `src/main.js` — ゲームループ・状態管理・HUD・ミニマップ
 - `src/terrain.js` — 地理院タイルから地形メッシュを生成（近くは高解像度写真に差し替え）
-- `src/city.js` — PLATEAU 3D Tiles の読み込み（[3d-tiles-renderer](https://github.com/NASA-AMMOS/3DTilesRendererJS)）と建物との衝突判定
-- `src/glider.js` — ハングライダーの飛行モデル（滑空比・失速・ジェット）
+- `tools/build-buildings.mjs` — PLATEAU の 3D Tiles から軽量な建物データを生成（`node tools/build-buildings.mjs`）
+- `src/buildings.js` / `src/buildingMesh.js` / `src/atlas.js` — 建物データの読み込み・屋根や壁の生成・テクスチャ・衝突判定
+- `src/glider.js` — ハングライダーとパイロットのモデル、飛行モデル（滑空比・失速・ジェット）
 - `src/balloons.js` — アドバルーンと上昇気流
 - `src/spots.js` — チェックポイント（観光名所）と上昇気流の位置
 - `src/geo.js` — 緯度経度 ⇔ ワールド座標の変換（WGS84、ジオイド高補正）

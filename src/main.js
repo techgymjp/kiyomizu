@@ -1,36 +1,39 @@
 import {
 	WebGLRenderer, Scene, PerspectiveCamera, HemisphereLight, DirectionalLight, Fog, Color,
-	Vector3, Raycaster, MathUtils, ACESFilmicToneMapping, SRGBColorSpace,
+	Vector3, MathUtils, ACESFilmicToneMapping, SRGBColorSpace, PCFSoftShadowMap,
 } from 'three';
-import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { Terrain } from './terrain.js';
-import { City } from './city.js';
+import { Buildings } from './buildings.js';
 import { Glider, MAX_JET } from './glider.js';
 import { Balloons, Thermals } from './balloons.js';
 import { SPOTS, THERMALS } from './spots.js';
 import { geoToWorld, worldToGeo, lonToTileX, latToTileY } from './geo.js';
 import { loadImage } from './loader.js';
 import { Sound } from './audio.js';
+import { createSky } from './sky.js';
+import { Fireworks } from './fireworks.js';
+import { People } from './people.js';
+import { buildStage, STAGE, START_POINT } from './stage.js';
 
 const $ = (id) => document.getElementById(id);
-const JET_PER_BALLOON = 5;
-// 清水の舞台 (本堂の舞台の西端) と飛び出す向き
-const START = { lat: 34.99478, lon: 135.78478, height: 128, heading: 245 };
+const TURBO_SEC = 5; // ターボ1つぶんの噴射時間
+const START_TURBOS = 3;
 
 // ---------- 設定 ----------
 const settings = {
 	quality: localStorage.getItem('kiyomizu-quality') || (matchMedia('(pointer: coarse)').matches ? 'low' : 'high'),
-	invert: localStorage.getItem('kiyomizu-invert') === '1',
+	muted: localStorage.getItem('kiyomizu-muted') === '1',
 };
 $('opt-quality').value = settings.quality;
-$('opt-invert').checked = settings.invert;
+$('opt-mute').checked = settings.muted;
 $('opt-quality').addEventListener('change', (e) => {
 	localStorage.setItem('kiyomizu-quality', e.target.value);
 	location.reload();
 });
-$('opt-invert').addEventListener('change', (e) => {
-	settings.invert = e.target.checked;
-	localStorage.setItem('kiyomizu-invert', settings.invert ? '1' : '0');
+$('opt-mute').addEventListener('change', (e) => {
+	settings.muted = e.target.checked;
+	localStorage.setItem('kiyomizu-muted', settings.muted ? '1' : '0');
+	sound.setMuted(settings.muted);
 });
 
 // ---------- 描画 ----------
@@ -40,35 +43,63 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, settings.quality === 'high' ? 
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = SRGBColorSpace;
 renderer.toneMapping = ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.9;
+renderer.toneMappingExposure = 1.0;
+renderer.autoClear = false;
+const shadows = settings.quality === 'high';
+renderer.shadowMap.enabled = shadows;
+renderer.shadowMap.type = PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
 
 const scene = new Scene();
-const haze = new Color(0xc4d6e6);
-scene.fog = new Fog(haze, 4000, 26000);
-scene.background = haze;
+// 秋晴れの澄んだ空気 (遠くだけうっすら青く)
+scene.fog = new Fog(new Color(0xa9d4f5), 6000, 32000);
 
-const camera = new PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 60000);
+const camera = new PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 60000);
+const wipeCamera = new PerspectiveCamera(55, 16 / 10, 0.1, 60000);
 
-const sky = new Sky();
-sky.scale.setScalar(50000);
-const sun = new Vector3().setFromSphericalCoords(1, MathUtils.degToRad(55), MathUtils.degToRad(320));
-sky.material.uniforms.sunPosition.value.copy(sun);
-sky.material.uniforms.turbidity.value = 4;
-sky.material.uniforms.rayleigh.value = 1.2;
-sky.material.uniforms.mieCoefficient.value = 0.004;
-sky.material.uniforms.mieDirectionalG.value = 0.8;
-sky.material.fog = false;
+const sun = new Vector3().setFromSphericalCoords(1, MathUtils.degToRad(50), MathUtils.degToRad(320));
+const sky = createSky(sun);
 scene.add(sky);
 
-scene.add(new HemisphereLight(0xe6f0ff, 0x7a705a, 2.0));
-const sunLight = new DirectionalLight(0xfff2dd, 2.2);
+scene.add(new HemisphereLight(0xd8ecff, 0x8a7350, 1.9));
+const sunLight = new DirectionalLight(0xfff0d8, 2.6);
 sunLight.position.copy(sun).multiplyScalar(1000);
 scene.add(sunLight);
+scene.add(sunLight.target);
+if (shadows) {
+	sunLight.castShadow = true;
+	sunLight.shadow.mapSize.set(2048, 2048);
+	const sc = sunLight.shadow.camera;
+	sc.left = sc.bottom = -260;
+	sc.right = sc.top = 260;
+	sc.near = 10;
+	sc.far = 3000;
+	sunLight.shadow.bias = -0.0004;
+	sunLight.shadow.normalBias = 0.6;
+}
 
+// 影を落とす範囲を注目点の周りに移動 (影のちらつきを抑えるため 4m 単位で動かす)
+function updateSun(focus) {
+	const fx = Math.round(focus.x / 4) * 4, fy = Math.round(focus.y / 4) * 4, fz = Math.round(focus.z / 4) * 4;
+	sunLight.target.position.set(fx, fy, fz);
+	sunLight.position.set(fx, fy, fz).addScaledVector(sun, 1500);
+}
+
+let wipeRect = null;
+function measureWipe() {
+	const r = $('wipe').getBoundingClientRect();
+	// 枠線の内側に描く
+	wipeRect = r.width ? { x: r.left + 5, y: r.top + 5, w: r.width - 10, h: r.height - 10 } : null;
+	if (wipeRect) {
+		wipeCamera.aspect = wipeRect.w / wipeRect.h;
+		wipeCamera.updateProjectionMatrix();
+	}
+}
 addEventListener('resize', () => {
 	camera.aspect = innerWidth / innerHeight;
 	camera.updateProjectionMatrix();
 	renderer.setSize(innerWidth, innerHeight);
+	measureWipe();
 });
 
 // ---------- ワールド ----------
@@ -76,14 +107,26 @@ const terrain = new Terrain(scene);
 const glider = new Glider();
 scene.add(glider.object);
 const sound = new Sound();
-let city = null;
+sound.setMuted(settings.muted);
+const fireworks = new Fireworks(scene);
+let buildings = null;
 let balloons = null;
 let thermals = null;
+let people = null;
 
-const startPos = new Vector3();
-const raycaster = new Raycaster();
+const startPos = new Vector3(START_POINT.x, STAGE.floor + 1.3, START_POINT.z);
 const tmpV = new Vector3();
 const geo = {};
+
+// 最初の操作で音を出せるようにする (ブラウザの自動再生制限)
+function unlockAudio() {
+	const first = !sound.ctx;
+	sound.init();
+	if (first && (state === 'title' || state === 'loading')) sound.playSong('title');
+}
+addEventListener('pointerdown', unlockAudio);
+addEventListener('keydown', unlockAudio);
+document.addEventListener('click', (e) => { if (e.target.closest('button')) sound.click(); });
 
 // ---------- 入力 ----------
 const keys = new Set();
@@ -93,20 +136,22 @@ addEventListener('keydown', (e) => {
 	keys.add(e.code);
 	if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 	if (e.code === 'KeyC') toggleCamera();
-	if (e.code === 'KeyM') sound.setMuted(!sound.muted);
+	if (e.code === 'KeyM') {
+		settings.muted = !settings.muted;
+		$('opt-mute').checked = settings.muted;
+		sound.setMuted(settings.muted);
+	}
 	if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
 	if (e.code === 'Space' && state === 'ready') jump();
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
+// ↑で上昇、↓で下降 (カーソルの向きのまま)
 function readInput() {
 	const k = (...codes) => codes.some((c) => keys.has(c));
-	let pitch = (k('ArrowUp', 'KeyW') ? 1 : 0) - (k('ArrowDown', 'KeyS') ? 1 : 0);
-	let roll = (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0);
-	pitch += -touch.y;
-	roll += touch.x;
-	if (settings.invert) pitch = -pitch;
+	const pitch = (k('ArrowUp', 'KeyW') ? 1 : 0) - (k('ArrowDown', 'KeyS') ? 1 : 0) - touch.y;
+	const roll = (k('ArrowRight', 'KeyD') ? 1 : 0) - (k('ArrowLeft', 'KeyA') ? 1 : 0) + touch.x;
 	return {
 		pitch: MathUtils.clamp(pitch, -1, 1),
 		roll: MathUtils.clamp(roll, -1, 1),
@@ -154,32 +199,67 @@ const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in win
 })();
 
 // ---------- カメラ ----------
-let cameraMode = 'pilot';
+let cameraMode = 'chase';
 const chasePos = new Vector3();
+const chaseUp = new Vector3(0, 1, 0);
+const tmpUp = new Vector3();
+const lookAt = new Vector3();
+const wipePos = new Vector3();
+const UP = new Vector3(0, 1, 0);
+let chaseInit = false;
 function toggleCamera() {
 	cameraMode = cameraMode === 'pilot' ? 'chase' : 'pilot';
-	chasePos.copy(camera.position);
+	chaseInit = false;
+}
+
+function setPilotVisible(v) {
+	glider.object.getObjectByName('pilotHead').visible = v;
+	glider.object.getObjectByName('pilotBody').visible = v;
+}
+
+function keepAboveGround(p, margin) {
+	worldToGeo(p, geo);
+	const g = terrain.heightAt(geo.lat, geo.lon);
+	if (geo.height < g + margin) p.y += g + margin - geo.height;
 }
 
 function updateCamera(dt) {
-	const head = glider.object.getObjectByName('pilotHead');
-	const body = glider.object.getObjectByName('pilotBody');
+	const f = glider.forward(tmpV);
 	if (cameraMode === 'pilot') {
-		head.visible = body.visible = false;
 		glider.object.updateMatrixWorld();
-		camera.position.set(0, 0.05, -0.15).applyMatrix4(glider.object.matrixWorld);
+		camera.position.set(0, 0.1, -0.2).applyMatrix4(glider.object.matrixWorld);
 		camera.quaternion.copy(glider.object.quaternion);
-		// 機首方向を少し見下ろす
 		camera.rotateX(-0.12);
 	} else {
-		head.visible = body.visible = true;
-		const f = glider.forward(tmpV);
-		const desired = glider.position.clone().addScaledVector(f, -16).add(new Vector3(0, 5, 0));
-		chasePos.lerp(desired, Math.min(1, dt * 4));
+		// 後方視点: パイロットとハングライダーを斜め後ろ上から
+		const back = 7.5 + glider.speed * 0.06;
+		const desired = glider.position.clone().addScaledVector(f, -back);
+		desired.y += 2.2 - Math.sin(glider.gamma) * 3;
+		if (!chaseInit) {
+			chasePos.copy(desired);
+			chaseInit = true;
+		}
+		chasePos.lerp(desired, Math.min(1, dt * 5));
+		keepAboveGround(chasePos, 2);
 		camera.position.copy(chasePos);
-		camera.up.set(0, 1, 0);
-		camera.lookAt(glider.position.clone().addScaledVector(f, 10));
+		// バンクに少しだけ追従して傾ける
+		tmpUp.set(0, 1, 0).applyQuaternion(glider.object.quaternion).lerp(UP, 0.55).normalize();
+		chaseUp.lerp(tmpUp, Math.min(1, dt * 4));
+		camera.up.copy(chaseUp);
+		lookAt.copy(glider.position).addScaledVector(f, 6);
+		lookAt.y += 0.8;
+		camera.lookAt(lookAt);
 	}
+	// ワイプ: 前方から自分を撮る (少し横にずらして背景の景色も入れる)
+	const right = tmpUp.crossVectors(f, UP).normalize();
+	const desiredWipe = glider.position.clone().addScaledVector(f, 6.5).addScaledVector(right, 2.2);
+	desiredWipe.y += 0.4;
+	wipePos.lerp(desiredWipe, Math.min(1, dt * 8));
+	if (wipePos.distanceTo(desiredWipe) > 30) wipePos.copy(desiredWipe);
+	keepAboveGround(wipePos, 1);
+	wipeCamera.position.copy(wipePos);
+	wipeCamera.up.copy(UP);
+	wipeCamera.lookAt(glider.position.x, glider.position.y + 0.6, glider.position.z);
 }
 
 // ---------- ゲーム状態 ----------
@@ -188,13 +268,14 @@ let flight = null;
 let titleTime = 0;
 
 function newFlight() {
-	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, lastVario: 0 };
+	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false };
 }
 
 function placeOnStage() {
-	glider.reset(startPos, START.heading * MathUtils.DEG2RAD);
+	glider.reset(startPos, START_POINT.heading * MathUtils.DEG2RAD);
 	glider.gamma = 0;
 	glider.speed = 0;
+	glider.jetFuel = START_TURBOS * TURBO_SEC;
 	glider.syncObject();
 	balloons.reset();
 	flight = newFlight();
@@ -205,26 +286,34 @@ function startGame() {
 	sound.init();
 	hideScreens();
 	$('hud').classList.remove('hidden');
+	measureWipe();
 	if (isTouch) $('touch').classList.remove('hidden');
 	placeOnStage();
 	state = 'ready';
-	cameraMode = 'pilot';
+	cameraMode = 'chase';
+	chaseInit = false;
+	wipePos.copy(glider.position);
+	sound.playSong('start');
+	showMessage('🎌 清水の舞台 🎌\nターボ ×3 で出発！', 2.6);
 	$('hint').textContent = isTouch ? '画面をタップで飛び降りる！' : 'スペースキーで飛び降りる！';
 }
 
 function jump() {
 	if (state !== 'ready') return;
 	sound.init();
-	glider.reset(startPos, START.heading * MathUtils.DEG2RAD);
+	glider.reset(startPos, START_POINT.heading * MathUtils.DEG2RAD);
+	glider.jetFuel = START_TURBOS * TURBO_SEC;
 	state = 'flying';
 	$('hint').textContent = '';
-	showMessage('えいっ！');
+	sound.jump();
+	sound.playSong('flight');
+	showMessage('とうっ！\n清水の舞台から\n飛び降りた！', 2);
 }
 
 function endGame(title, reason) {
 	state = 'over';
+	sound.stopSong(0.1);
 	sound.crash();
-	sound.update(0, false, false);
 	$('touch').classList.add('hidden');
 	const dist = flight.distance / 1000;
 	$('result-title').textContent = title;
@@ -236,18 +325,40 @@ function endGame(title, reason) {
 		? `通過: ${flight.checkpoints.join(' → ')}`
 		: 'アドバルーンは割れなかった…';
 	const rank = rankOf(flight.checkpoints.length, flight.distance);
-	$('result-rank').textContent = rank <= 10 ? `ランキング ${rank} 位に入りました！` : '';
+	const ranked = rank <= 10 && (flight.checkpoints.length > 0 || flight.distance > 50);
+	$('rank-banner').classList.toggle('hidden', !ranked);
+	$('rank-no').textContent = rank;
 	$('result-name').value = localStorage.getItem('kiyomizu-name') || '';
 	$('btn-save').disabled = false;
 	$('btn-save').textContent = '記録する';
-	setTimeout(() => showScreen('result'), 1200);
+	showMessage(title, 1.4);
+	setTimeout(() => {
+		if (state !== 'over') return;
+		showScreen('result');
+		if (ranked) {
+			// ランキング入り: お祝いのファンファーレと花火
+			sound.playSong('ranking');
+			celebrate();
+		} else {
+			sound.playSong('gameover');
+		}
+	}, 1500);
+}
+
+function celebrate() {
+	for (let i = 0; i < 5; i++) {
+		const a = Math.random() * Math.PI * 2;
+		const from = glider.position.clone().add(new Vector3(Math.cos(a) * 60, -10, Math.sin(a) * 60));
+		fireworks.launch(from, from.clone().add(new Vector3(0, 70 + Math.random() * 40, 0)), i * 0.5);
+		sound.firework(i * 0.5);
+	}
 }
 
 function togglePause() {
 	if (state === 'flying') {
 		state = 'paused';
 		showScreen('pause');
-		sound.update(0, false, false);
+		sound.update(0, {});
 	} else if (state === 'paused') {
 		state = 'flying';
 		hideScreens();
@@ -266,6 +377,8 @@ let messageTimer = 0;
 function showMessage(text, sec = 2.2) {
 	const el = $('message');
 	el.textContent = text;
+	el.classList.remove('show');
+	void el.offsetWidth; // アニメーションをやり直す
 	el.classList.add('show');
 	clearTimeout(messageTimer);
 	messageTimer = setTimeout(() => el.classList.remove('show'), sec * 1000);
@@ -284,9 +397,10 @@ $('btn-save').addEventListener('click', () => {
 	saveRanking({ name, cp: flight.checkpoints.length, dist: flight.distance, date: Date.now() });
 	$('btn-save').disabled = true;
 	$('btn-save').textContent = '記録しました';
+	sound.turboGet();
 });
 $('btn-share').addEventListener('click', () => {
-	const text = `清水の舞台から飛び降りるつもりで、京都の空を ${(flight.distance / 1000).toFixed(2)}km 飛んでチェックポイントを ${flight.checkpoints.length} 個通過した！`;
+	const text = `清水の舞台から飛び降りるつもりで、紅葉の京都の空を ${(flight.distance / 1000).toFixed(2)}km 飛んでアドバルーンを ${flight.checkpoints.length} 個割った！🎈`;
 	const url = location.href.split('#')[0].split('?')[0];
 	open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=${encodeURIComponent('清水の舞台から飛び降りるつもり')}`, '_blank');
 });
@@ -296,6 +410,7 @@ function toTitle() {
 	$('hud').classList.add('hidden');
 	$('touch').classList.add('hidden');
 	showScreen('title');
+	sound.playSong('title');
 }
 
 // ---------- ランキング (localStorage) ----------
@@ -331,7 +446,7 @@ function renderRanking() {
 	list.forEach((r, i) => {
 		const tr = document.createElement('tr');
 		const d = new Date(r.date);
-		[`${i + 1}`, r.name, `${r.cp}`, `${(r.dist / 1000).toFixed(2)} km`, `${d.getMonth() + 1}/${d.getDate()}`].forEach((t, j) => {
+		[['🥇', '🥈', '🥉'][i] ?? `${i + 1}`, r.name, `${r.cp}`, `${(r.dist / 1000).toFixed(2)} km`, `${d.getMonth() + 1}/${d.getDate()}`].forEach((t, j) => {
 			const td = document.createElement('td');
 			td.textContent = t;
 			if (j === 2 || j === 3) td.className = 'num';
@@ -347,7 +462,7 @@ function formatTime(sec) {
 	return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-let hudAgl = 0;
+let hudAgl = 999;
 function updateHud() {
 	worldToGeo(glider.position, geo);
 	const ground = terrain.heightAt(geo.lat, geo.lon);
@@ -356,21 +471,24 @@ function updateHud() {
 	$('hud-alt').textContent = geo.height.toFixed(0);
 	$('hud-speed').textContent = (glider.speed * 3.6).toFixed(0);
 	const vario = glider.velocity.y;
-	$('hud-vario').textContent = `${vario >= 0 ? '+' : ''}${vario.toFixed(1)}`;
+	const v = $('hud-vario');
+	v.textContent = `${vario >= 0 ? '+' : ''}${vario.toFixed(1)}`;
+	v.className = `v ${vario > 0.3 ? 'up' : vario < -2 ? 'down' : ''}`;
 	$('hud-cp').textContent = `${flight.checkpoints.length}`;
 	$('hud-cp-total').textContent = `/ ${SPOTS.length}`;
 	$('hud-dist').textContent = (flight.distance / 1000).toFixed(2);
 	$('hud-time').textContent = formatTime(flight.time);
-	$('jet-sec').textContent = glider.jetFuel.toFixed(1);
-	$('jet-fill').style.width = `${(glider.jetFuel / MAX_JET) * 100}%`;
-	$('jet').classList.toggle('active', glider.jetting);
+	$('turbo-count').textContent = `×${Math.ceil(glider.jetFuel / TURBO_SEC - 1e-6)}`;
+	$('turbo-fill').style.width = `${(glider.jetFuel / MAX_JET) * 100}%`;
+	$('turbo-fill').style.backgroundSize = `${(MAX_JET / Math.max(glider.jetFuel, 0.01)) * 100}% 100%`;
+	$('turbo').classList.toggle('active', glider.jetting);
 	$('stall').classList.toggle('hidden', !(glider.stalled && state === 'flying'));
 
 	const near = balloons.nearest(glider.position);
 	if (near) {
 		const p = near.item.group.position;
 		const bearing = Math.atan2(p.x - glider.position.x, -(p.z - glider.position.z));
-		const rel = MathUtils.radToDeg(bearing - glider.yaw);
+		const rel = MathUtils.radToDeg(bearing - glider.yaw) - 90;
 		const dy = p.y - glider.position.y;
 		$('target-arrow').style.transform = `rotate(${rel}deg)`;
 		$('target-name').textContent = `🎈 ${near.item.spot.name}`;
@@ -413,21 +531,20 @@ function drawMinimap() {
 	});
 	worldToGeo(glider.position, geo);
 	const me = toMap(geo.lat, geo.lon);
-	const scale = 0.6;
 	ctx.save();
 	ctx.clearRect(0, 0, W, W);
 	ctx.translate(W / 2, W / 2);
 	ctx.rotate(-glider.yaw); // 進行方向を上に
-	ctx.scale(scale, scale);
+	ctx.scale(0.6, 0.6);
 	ctx.translate(-me.x, -me.y);
 	ctx.drawImage(mapCanvas, 0, 0);
 	for (const it of balloons.items) {
 		const p = toMap(it.spot.lat, it.spot.lon);
 		ctx.beginPath();
-		ctx.arc(p.x, p.y, it.popped ? 4 : 7, 0, Math.PI * 2);
-		ctx.fillStyle = it.popped ? 'rgba(120,120,120,0.7)' : '#e8382f';
+		ctx.arc(p.x, p.y, it.popped ? 5 : 9, 0, Math.PI * 2);
+		ctx.fillStyle = it.popped ? 'rgba(140,140,140,0.7)' : '#ff4b5c';
 		ctx.fill();
-		ctx.lineWidth = 2;
+		ctx.lineWidth = 3;
 		ctx.strokeStyle = '#fff';
 		ctx.stroke();
 	}
@@ -436,54 +553,69 @@ function drawMinimap() {
 	ctx.save();
 	ctx.translate(W / 2, W / 2);
 	ctx.beginPath();
-	ctx.moveTo(0, -12);
-	ctx.lineTo(8, 9);
-	ctx.lineTo(0, 4);
-	ctx.lineTo(-8, 9);
+	ctx.moveTo(0, -14);
+	ctx.lineTo(10, 10);
+	ctx.lineTo(0, 5);
+	ctx.lineTo(-10, 10);
 	ctx.closePath();
-	ctx.fillStyle = '#1b3fa6';
+	ctx.fillStyle = '#2f80ed';
 	ctx.fill();
 	ctx.strokeStyle = '#fff';
-	ctx.lineWidth = 2;
+	ctx.lineWidth = 3;
 	ctx.stroke();
 	ctx.restore();
 	// 北
 	ctx.save();
 	ctx.translate(W / 2, W / 2);
 	ctx.rotate(-glider.yaw);
-	ctx.fillStyle = '#d7262e';
-	ctx.font = 'bold 18px sans-serif';
+	ctx.fillStyle = '#ff4b5c';
+	ctx.font = '900 20px "M PLUS Rounded 1c", sans-serif';
 	ctx.textAlign = 'center';
-	ctx.fillText('N', 0, -W / 2 + 22);
+	ctx.fillText('N', 0, -W / 2 + 26);
 	ctx.restore();
 }
 
 // ---------- 飛行中の判定 ----------
-const down = new Vector3(0, -1, 0);
 function checkCollision(prev) {
 	worldToGeo(glider.position, geo);
 	const ground = terrain.heightAt(geo.lat, geo.lon);
 	if (geo.height <= ground + 0.8) {
 		return { title: '着陸！', reason: '地面に降り立ちました。' };
 	}
-	if (flight.grace > 0 || !city) return null;
-	// 進行方向と真下に建物があるか
-	const seg = tmpV.copy(glider.position).sub(prev);
-	const len = seg.length();
-	if (len > 0) {
-		raycaster.set(prev, seg.normalize());
-		raycaster.near = 0;
-		raycaster.far = len + 1.5;
-		if (city.raycast(raycaster)) return { title: 'ドーン！', reason: '建物に着地しました。' };
+	if (flight.grace > 0 || !buildings) return null;
+	// 前フレームとの間を細かく調べて、建物に入ったか
+	const steps = Math.max(1, Math.ceil(prev.distanceTo(glider.position) / 1.5));
+	for (let i = 1; i <= steps; i++) {
+		tmpV.lerpVectors(prev, glider.position, i / steps);
+		if (buildings.hit(tmpV)) {
+			const roof = glider.velocity.y < 0 && Math.abs(glider.velocity.y) > Math.hypot(glider.velocity.x, glider.velocity.z) * 0.15;
+			return roof
+				? { title: '屋根に着地！', reason: '建物の屋根に降り立ちました。' }
+				: { title: 'ドーン！', reason: '建物にぶつかってしまいました。' };
+		}
 	}
-	raycaster.set(glider.position, down);
-	raycaster.far = 1.2;
-	if (city.raycast(raycaster)) return { title: '屋根に着地！', reason: '建物の屋根に降り立ちました。' };
 	const b = terrain.bounds();
 	if (geo.lat > b.north || geo.lat < b.south || geo.lon < b.west || geo.lon > b.east) {
 		return { title: '京都の外へ…', reason: '京都盆地を飛び出してしまいました。' };
 	}
 	return null;
+}
+
+function onPop(it) {
+	flight.checkpoints.push(it.spot.name);
+	glider.addJet(TURBO_SEC);
+	sound.pop();
+	sound.turboGet();
+	// 地上から花火を3発
+	const p = it.group.position;
+	for (let i = 0; i < 3; i++) {
+		const a = Math.random() * Math.PI * 2;
+		const from = p.clone().add(new Vector3(Math.cos(a) * 30, -it.spot.agl, Math.sin(a) * 30));
+		const to = p.clone().add(new Vector3(Math.cos(a) * 25, 35 + i * 20, Math.sin(a) * 25));
+		fireworks.launch(from, to, i * 0.45);
+		sound.firework(i * 0.45);
+	}
+	showMessage(`🎆 チェックポイント！ 🎆\n${it.spot.name}\nターボ +1 🚀`, 2.6);
 }
 
 // ---------- メインループ ----------
@@ -500,38 +632,47 @@ function loop(now) {
 	const dt = Math.min(0.05, (now - last) / 1000);
 	last = now;
 	const time = now / 1000;
+	let vario = 0;
 
 	if (debug.cam) {
 		camera.position.copy(debug.cam.pos);
 		camera.up.set(0, 1, 0);
 		camera.lookAt(debug.cam.look);
 	} else if (state === 'loading' || state === 'title') {
-		// タイトル画面: 清水寺の周りをゆっくり回る
+		// タイトル画面: 清水の舞台の周りをゆっくり回る
 		titleTime += dt;
-		const a = titleTime * 0.05;
-		camera.position.set(startPos.x + Math.sin(a) * 350, startPos.y + 120, startPos.z + Math.cos(a) * 350);
+		const a = titleTime * 0.06 + 2.2;
+		camera.position.set(startPos.x + Math.sin(a) * 160, startPos.y + 45, startPos.z + Math.cos(a) * 160);
 		camera.up.set(0, 1, 0);
-		camera.lookAt(startPos.x, startPos.y - 20, startPos.z);
+		camera.lookAt(startPos.x, startPos.y - 10, startPos.z);
 	} else if (state === 'ready') {
 		updateCamera(dt);
-		// 舞台の上で揺れる
-		camera.position.y += Math.sin(time * 2) * 0.03;
 	} else if (state === 'flying') {
 		const input = readInput();
 		prev.copy(glider.position);
 		const lift = thermals ? thermals.liftAt(glider.position) : 0;
+		const hadFuel = glider.jetFuel > 0;
 		glider.update(dt, input, lift);
 		flight.time += dt;
 		flight.grace -= dt;
 		flight.distance += Math.hypot(glider.position.x - prev.x, glider.position.z - prev.z);
+		vario = glider.velocity.y;
 
-		const popped = balloons.update(dt, time, glider.position, camera);
-		for (const it of popped) {
-			flight.checkpoints.push(it.spot.name);
-			glider.addJet(JET_PER_BALLOON);
-			sound.pop();
-			showMessage(`チェックポイント！\n${it.spot.name}\nジェット +${JET_PER_BALLOON}秒`);
+		// 効果音のきっかけ
+		if (glider.jetting && !flight.wasJetting) sound.jetStart();
+		if (input.jet && hadFuel && glider.jetFuel <= 0) {
+			sound.jetEmpty();
+			showMessage('ターボ切れ！', 1.2);
 		}
+		flight.wasJetting = glider.jetting;
+		const inThermal = lift > 0.8;
+		if (inThermal && !flight.inThermal) {
+			sound.thermalEnter();
+			showMessage('✨ 上昇気流！', 1.2);
+		}
+		flight.inThermal = inThermal;
+
+		for (const it of balloons.update(dt, time, glider.position)) onPop(it);
 		const hit = checkCollision(prev);
 		if (hit) endGame(hit.title, hit.reason);
 		updateCamera(dt);
@@ -539,19 +680,23 @@ function loop(now) {
 		updateCamera(dt);
 	}
 
-	if (state !== 'flying' && balloons) balloons.update(dt, time, new Vector3(1e9, 0, 0), camera);
+	if (state !== 'flying' && balloons) balloons.update(dt, time, new Vector3(1e9, 0, 0));
 	if (thermals) thermals.update(time);
-	sound.update(glider.speed, glider.jetting, state === 'flying');
+	fireworks.update(dt);
+	const focus = state === 'title' || state === 'loading' ? startPos : glider.position;
+	if (people && people.update(dt, time, focus) && state === 'flying') sound.cheer();
+	sound.update(dt, {
+		speed: glider.speed, jetting: glider.jetting, active: state === 'flying',
+		vario, agl: hudAgl, stalled: glider.stalled,
+	});
 
 	terrainTimer -= dt;
 	if (terrainTimer <= 0) {
 		terrainTimer = 0.5;
-		terrain.update(state === 'title' || state === 'loading' ? startPos : glider.position);
+		terrain.update(focus);
 	}
-	if (city) {
-		camera.updateMatrixWorld();
-		city.update();
-	}
+	if (buildings) buildings.update(focus);
+	if (shadows) updateSun(focus);
 
 	if (balloons && (state === 'flying' || state === 'ready')) {
 		hudTimer -= dt;
@@ -562,29 +707,56 @@ function loop(now) {
 		}
 	}
 
+	// 描画: メイン → ワイプ
+	sky.position.copy(camera.position);
+	renderer.shadowMap.needsUpdate = shadows;
+	renderer.setScissorTest(false);
+	renderer.setViewport(0, 0, innerWidth, innerHeight);
+	renderer.clear();
+	setPilotVisible(cameraMode !== 'pilot' || state === 'title');
 	renderer.render(scene, camera);
+	const showWipe = (state === 'ready' || state === 'flying' || state === 'over') && wipeRect && !debug.cam;
+	if (showWipe) {
+		setPilotVisible(true);
+		sky.position.copy(wipeCamera.position);
+		const { x, y, w, h } = wipeRect;
+		const vy = innerHeight - y - h;
+		renderer.setScissorTest(true);
+		renderer.setScissor(x, vy, w, h);
+		renderer.setViewport(x, vy, w, h);
+		renderer.clear();
+		renderer.render(scene, wipeCamera);
+		renderer.setScissorTest(false);
+	}
 }
 
 // ---------- 起動 ----------
 async function init() {
-	geoToWorld(START.lat, START.lon, START.height, startPos);
 	requestAnimationFrame(loop);
-	city = new City(scene, camera, renderer, { quality: settings.quality });
+	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1400 : 900 });
+	await buildings.init();
 	await terrain.init((p) => {
-		$('load-fill').style.width = `${(p * 100).toFixed(0)}%`;
+		$('load-fill').style.width = `${(p * 85).toFixed(0)}%`;
 	});
-	// 舞台の位置を地表より上に
-	const ground = terrain.heightAt(START.lat, START.lon);
-	if (START.height < ground + 10) geoToWorld(START.lat, START.lon, ground + 10, startPos);
+	buildStage(scene, (x, z) => terrain.heightAtWorld(x, z));
 
 	balloons = new Balloons(scene, SPOTS, terrain);
 	thermals = new Thermals(scene, THERMALS, terrain);
+	people = new People(scene, SPOTS, terrain, buildings);
 	flight = newFlight();
 	await buildMinimapBase();
+
+	// 舞台周辺の建物ができるまで待つ
+	$('load-text').textContent = '紅葉の京都の街並みを組み立て中…';
+	for (let i = 0; i < 300 && buildings.readyAround(startPos, 1500) < 1; i++) {
+		$('load-fill').style.width = `${(85 + buildings.readyAround(startPos, 1500) * 15).toFixed(0)}%`;
+		await new Promise((r) => setTimeout(r, 100));
+	}
 
 	$('loading').classList.add('hidden');
 	$('title-buttons').classList.remove('hidden');
 	state = 'title';
+	if (sound.ctx) sound.playSong('title');
 }
 
 init().catch((e) => {
@@ -593,4 +765,8 @@ init().catch((e) => {
 });
 
 // デバッグ用
-window.__kiyomizu = { debug, geoToWorld, glider, terrain, get state() { return state; }, get flight() { return flight; }, get frames() { return frames; }, city: () => city, camera, startGame, jump };
+window.__kiyomizu = {
+	debug, geoToWorld, glider, terrain, camera, startGame, jump,
+	get state() { return state; }, get flight() { return flight; }, get frames() { return frames; },
+	buildings: () => buildings, balloons: () => balloons,
+};

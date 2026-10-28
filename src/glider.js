@@ -1,7 +1,7 @@
 // ハングライダーの飛行モデルと3Dモデル
 import {
 	Group, Mesh, BufferGeometry, Float32BufferAttribute, MeshStandardMaterial, DoubleSide,
-	CylinderGeometry, CapsuleGeometry, SphereGeometry, MathUtils, Vector3,
+	CylinderGeometry, CapsuleGeometry, SphereGeometry, MathUtils, Vector3, CanvasTexture, SRGBColorSpace,
 } from 'three';
 
 const G = 9.81;
@@ -12,7 +12,7 @@ const TRIM_ANGLE = -Math.atan(1 / GLIDE_RATIO);
 const DRAG_K = G * Math.sin(-TRIM_ANGLE) / TRIM_SPEED ** 2;
 const STALL_SPEED = 9;
 const JET_THRUST = 16; // m/s^2
-export const MAX_JET = 20; // 秒
+export const MAX_JET = 40; // 秒 (ターボ8つ分)
 
 export class Glider {
 	constructor() {
@@ -89,85 +89,178 @@ export class Glider {
 	}
 }
 
+function sailTexture() {
+	const c = document.createElement('canvas');
+	c.width = 512;
+	c.height = 256;
+	const ctx = c.getContext('2d');
+	// 翼幅方向 (x) に色帯
+	const bands = ['#1d3f8f', '#f4f1ea', '#d7262e', '#f6b51e', '#d7262e', '#f4f1ea', '#d7262e', '#f6b51e', '#d7262e', '#f4f1ea', '#1d3f8f'];
+	const w = c.width / bands.length;
+	bands.forEach((col, i) => {
+		ctx.fillStyle = col;
+		ctx.fillRect(i * w, 0, w + 1, c.height);
+	});
+	// 縫い目
+	ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+	ctx.lineWidth = 2;
+	for (let i = 1; i < bands.length; i++) {
+		ctx.beginPath();
+		ctx.moveTo(i * w, 0);
+		ctx.lineTo(i * w, c.height);
+		ctx.stroke();
+	}
+	for (let y = 40; y < c.height; y += 50) {
+		ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+		ctx.beginPath();
+		ctx.moveTo(0, y);
+		ctx.lineTo(c.width, y);
+		ctx.stroke();
+	}
+	// 前縁の補強布
+	ctx.fillStyle = '#2b2b30';
+	ctx.fillRect(0, 0, c.width, 14);
+	const tex = new CanvasTexture(c);
+	tex.colorSpace = SRGBColorSpace;
+	return tex;
+}
+
 function buildModel() {
 	const root = new Group();
 	root.name = 'glider';
 
-	// 翼 (デルタ形の帆): 原点はパイロットの頭の位置、-Z が前方
-	const span = 10, chord = 3.2, sweep = 2.4, sailY = 1.4;
-	const verts = [
-		0, sailY + 0.15, -1.6, // 機首
-		-span / 2, sailY + 0.35, -1.6 + sweep, // 左翼端
-		0, sailY, -1.6 + chord, // 後端中央
-		0, sailY + 0.15, -1.6,
-		0, sailY, -1.6 + chord,
-		span / 2, sailY + 0.35, -1.6 + sweep, // 右翼端
-	];
+	// 翼: 原点はパイロットの頭の位置、-Z が前方
+	const span = 10.4, sweep = 2.3, rootChord = 3.1, sailY = 1.35, noseZ = -1.75;
+	const NS = 20, NC = 6;
+	const pos = [], uv = [], index = [];
+	for (let i = 0; i <= NS; i++) {
+		const s = i / NS * 2 - 1; // -1 (左翼端) 〜 1 (右翼端)
+		const a = Math.abs(s);
+		const leZ = noseZ + a * sweep;
+		const chord = rootChord * (1 - a * 0.8) + 0.25;
+		for (let j = 0; j <= NC; j++) {
+			const t = j / NC;
+			const x = s * span / 2;
+			// 上反角 + 帆のふくらみ + 後縁のねじり上げ
+			const y = sailY + 0.12 + a * 0.32 + Math.sin(Math.PI * t) * 0.16 * (1 - a * a) - t * a * 0.12;
+			const z = leZ + chord * t;
+			pos.push(x, y, z);
+			uv.push(i / NS, 1 - t);
+		}
+	}
+	for (let i = 0; i < NS; i++) {
+		for (let j = 0; j < NC; j++) {
+			const a = i * (NC + 1) + j, b = a + NC + 1;
+			index.push(a, a + 1, b, b, a + 1, b + 1);
+		}
+	}
 	const sailGeom = new BufferGeometry();
-	sailGeom.setAttribute('position', new Float32BufferAttribute(verts, 3));
+	sailGeom.setAttribute('position', new Float32BufferAttribute(pos, 3));
+	sailGeom.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+	sailGeom.setIndex(index);
 	sailGeom.computeVertexNormals();
-	const sail = new Mesh(sailGeom, new MeshStandardMaterial({
-		color: 0xd7262e, side: DoubleSide, roughness: 0.6, transparent: true, opacity: 0.92,
-	}));
+	const sail = new Mesh(sailGeom, new MeshStandardMaterial({ map: sailTexture(), side: DoubleSide, roughness: 0.7 }));
+	sail.castShadow = true;
 	root.add(sail);
 
-	// 帆の模様 (白いストライプ)
-	const stripeGeom = new BufferGeometry();
-	stripeGeom.setAttribute('position', new Float32BufferAttribute([
-		-span / 2 * 0.55, sailY + 0.27, -1.6 + sweep * 0.55 + 0.02,
-		-span / 2 * 0.45, sailY + 0.25, -1.6 + sweep * 0.45 + 0.02,
-		-0.15, sailY + 0.03, -1.6 + chord - 0.1,
-		span / 2 * 0.45, sailY + 0.25, -1.6 + sweep * 0.45 + 0.02,
-		span / 2 * 0.55, sailY + 0.27, -1.6 + sweep * 0.55 + 0.02,
-		0.15, sailY + 0.03, -1.6 + chord - 0.1,
-	], 3));
-	stripeGeom.computeVertexNormals();
-	root.add(new Mesh(stripeGeom, new MeshStandardMaterial({ color: 0xffffff, side: DoubleSide })));
-
-	const tube = new MeshStandardMaterial({ color: 0x9aa4ad, metalness: 0.6, roughness: 0.4 });
-	const addTube = (a, b, r = 0.013) => {
+	const tube = new MeshStandardMaterial({ color: 0xb4bcc4, metalness: 0.7, roughness: 0.35 });
+	const addTube = (a, b, r = 0.022, parent = root, mat = tube) => {
 		const va = new Vector3(...a), vb = new Vector3(...b);
-		const len = va.distanceTo(vb);
-		const m = new Mesh(new CylinderGeometry(r, r, len, 6), tube);
+		const m = new Mesh(new CylinderGeometry(r, r, va.distanceTo(vb), 8), mat);
 		m.position.copy(va).add(vb).multiplyScalar(0.5);
 		m.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), vb.clone().sub(va).normalize());
-		root.add(m);
+		m.castShadow = true;
+		parent.add(m);
+		return m;
 	};
-	// キール・リーディングエッジ
-	addTube([0, sailY + 0.1, -1.7], [0, sailY - 0.05, -1.6 + chord]);
-	addTube([0, sailY + 0.15, -1.6], [-span / 2, sailY + 0.35, -1.6 + sweep]);
-	addTube([0, sailY + 0.15, -1.6], [span / 2, sailY + 0.35, -1.6 + sweep]);
+	// キール・リーディングエッジ・クロスバー
+	addTube([0, sailY + 0.08, noseZ - 0.05], [0, sailY + 0.02, noseZ + rootChord + 0.1], 0.03);
+	addTube([0, sailY + 0.12, noseZ], [-span / 2, sailY + 0.44, noseZ + sweep], 0.028);
+	addTube([0, sailY + 0.12, noseZ], [span / 2, sailY + 0.44, noseZ + sweep], 0.028);
+	addTube([-span * 0.3, sailY + 0.25, noseZ + sweep * 0.6 + 0.2], [span * 0.3, sailY + 0.25, noseZ + sweep * 0.6 + 0.2], 0.02);
+	// キングポスト
+	addTube([0, sailY + 0.1, -0.2], [0, sailY + 0.75, -0.2], 0.02);
 	// コントロールバー (A字フレーム)
-	const barY = -0.55, barZ = -1.15;
-	addTube([0, sailY, -0.2], [-0.75, barY, barZ]);
-	addTube([0, sailY, -0.2], [0.75, barY, barZ]);
-	addTube([-0.75, barY, barZ], [0.75, barY, barZ], 0.018);
+	const barY = -0.42, barZ = -0.62, barW = 0.72;
+	addTube([0, sailY, -0.15], [-barW, barY, barZ]);
+	addTube([0, sailY, -0.15], [barW, barY, barZ]);
+	addTube([-barW, barY, barZ], [barW, barY, barZ], 0.02);
+	// ワイヤー
+	const wire = new MeshStandardMaterial({ color: 0x666666 });
+	for (const sx of [-1, 1]) {
+		addTube([sx * barW, barY, barZ], [sx * span / 2 * 0.62, sailY + 0.33, noseZ + sweep * 0.62 + 0.1], 0.005, root, wire);
+		addTube([0, sailY + 0.75, -0.2], [sx * span / 2 * 0.62, sailY + 0.33, noseZ + sweep * 0.62 + 0.1], 0.005, root, wire);
+	}
+	addTube([0, barY, barZ], [0, sailY + 0.05, noseZ], 0.005, root, wire);
 
-	// パイロット
-	const suit = new MeshStandardMaterial({ color: 0x223355, roughness: 0.8 });
-	const body = new Mesh(new CapsuleGeometry(0.28, 1.4, 4, 8), suit);
-	body.rotation.x = Math.PI / 2;
-	body.position.set(0, -0.15, 0.85);
+	// パイロット (うつ伏せでハーネスに入っている)
+	const body = new Group();
 	body.name = 'pilotBody';
+	const suit = new MeshStandardMaterial({ color: 0x1f2a44, roughness: 0.8 });
+	const accent = new MeshStandardMaterial({ color: 0xf6b51e, roughness: 0.6 });
+	const skin = new MeshStandardMaterial({ color: 0xe0b48f, roughness: 0.8 });
+	const harness = new Mesh(new CapsuleGeometry(0.25, 1.25, 6, 12), suit);
+	harness.rotation.x = Math.PI / 2;
+	harness.position.set(0, -0.12, 0.78);
+	harness.scale.set(1, 1, 0.85);
+	body.add(harness);
+	const stripe = new Mesh(new CapsuleGeometry(0.255, 0.9, 4, 12), accent);
+	stripe.rotation.x = Math.PI / 2;
+	stripe.position.set(0, -0.12, 0.85);
+	stripe.scale.set(1.01, 1, 0.2);
+	body.add(stripe);
+	// 肩
+	const shoulders = new Mesh(new CapsuleGeometry(0.13, 0.32, 4, 8), suit);
+	shoulders.rotation.z = Math.PI / 2;
+	shoulders.position.set(0, -0.08, 0.12);
+	body.add(shoulders);
+	// 腕 (肩 → ひじ → コントロールバーを握る手)
+	for (const sx of [-1, 1]) {
+		const sh = [sx * 0.24, -0.08, 0.12];
+		const el = [sx * 0.44, -0.3, -0.22];
+		const hand = [sx * 0.42, barY, barZ];
+		addTube(sh, el, 0.065, body, suit);
+		addTube(el, hand, 0.055, body, suit);
+		const h = new Mesh(new SphereGeometry(0.06, 8, 6), skin);
+		h.position.set(...hand);
+		body.add(h);
+	}
+	// 吊り下げベルト
+	addTube([0, sailY, 0.25], [0, 0.08, 0.45], 0.025, body, new MeshStandardMaterial({ color: 0x222222 }));
+	body.traverse((o) => { o.castShadow = true; });
 	root.add(body);
-	const head = new Mesh(new SphereGeometry(0.17, 12, 10), new MeshStandardMaterial({ color: 0xffcc33 }));
-	head.position.set(0, -0.05, 0);
+
+	// 頭 (ヘルメットとバイザー)
+	const head = new Group();
 	head.name = 'pilotHead';
+	const helmet = new Mesh(new SphereGeometry(0.16, 16, 12), new MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }));
+	helmet.scale.set(1, 0.95, 1.1);
+	head.add(helmet);
+	const helmetStripe = new Mesh(new SphereGeometry(0.162, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.35), new MeshStandardMaterial({ color: 0xd7262e, roughness: 0.3 }));
+	helmetStripe.scale.set(0.35, 0.95, 1.1);
+	head.add(helmetStripe);
+	const visor = new Mesh(new SphereGeometry(0.15, 16, 8, Math.PI * 0.15, Math.PI * 0.7, Math.PI * 0.35, Math.PI * 0.3),
+		new MeshStandardMaterial({ color: 0x111822, roughness: 0.1, metalness: 0.6 }));
+	visor.rotation.y = Math.PI;
+	visor.scale.set(1.05, 1, 1.12);
+	head.add(visor);
+	head.position.set(0, 0, -0.05);
+	head.traverse((o) => { o.castShadow = true; });
 	root.add(head);
 
-	// ジェット噴射
+	// ジェット (ハーネスの後ろ)
+	const nozzle = new Mesh(new CylinderGeometry(0.16, 0.12, 0.5, 12), tube);
+	nozzle.rotation.x = Math.PI / 2;
+	nozzle.position.set(0, -0.12, 1.65);
+	root.add(nozzle);
 	const flame = new Mesh(
-		new CylinderGeometry(0.05, 0.35, 2.2, 10, 1, true),
-		new MeshStandardMaterial({ color: 0xffa020, emissive: 0xff6a00, emissiveIntensity: 3, transparent: true, opacity: 0.85 }),
+		new CylinderGeometry(0.05, 0.3, 2.2, 12, 1, true),
+		new MeshStandardMaterial({ color: 0xffa020, emissive: 0xff6a00, emissiveIntensity: 3, transparent: true, opacity: 0.85, depthWrite: false }),
 	);
 	flame.rotation.x = Math.PI / 2;
-	flame.position.set(0, -0.15, 2.9);
+	flame.position.set(0, -0.12, 3.0);
 	flame.name = 'flame';
 	root.add(flame);
-	const nozzle = new Mesh(new CylinderGeometry(0.22, 0.18, 0.6, 10), tube);
-	nozzle.rotation.x = Math.PI / 2;
-	nozzle.position.set(0, -0.15, 1.75);
-	root.add(nozzle);
 
 	return root;
 }
