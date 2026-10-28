@@ -42,7 +42,8 @@ export class City {
 		this.tiles = [];
 
 		const draco = new DRACOLoader();
-		draco.setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
+		// Google が配信している Draco デコーダ
+		draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
 
 		for (const ward of WARDS) {
 			const path = (quality === 'high' && ward.lod2) ? ward.lod2 : ward.lod1;
