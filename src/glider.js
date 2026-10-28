@@ -125,7 +125,7 @@ function buildModel() {
 	root.add(new Mesh(stripeGeom, new MeshStandardMaterial({ color: 0xffffff, side: DoubleSide })));
 
 	const tube = new MeshStandardMaterial({ color: 0x9aa4ad, metalness: 0.6, roughness: 0.4 });
-	const addTube = (a, b, r = 0.035) => {
+	const addTube = (a, b, r = 0.013) => {
 		const va = new Vector3(...a), vb = new Vector3(...b);
 		const len = va.distanceTo(vb);
 		const m = new Mesh(new CylinderGeometry(r, r, len, 6), tube);
@@ -138,10 +138,10 @@ function buildModel() {
 	addTube([0, sailY + 0.15, -1.6], [-span / 2, sailY + 0.35, -1.6 + sweep]);
 	addTube([0, sailY + 0.15, -1.6], [span / 2, sailY + 0.35, -1.6 + sweep]);
 	// コントロールバー (A字フレーム)
-	const barY = -0.45, barZ = -0.85;
+	const barY = -0.55, barZ = -1.15;
 	addTube([0, sailY, -0.2], [-0.75, barY, barZ]);
 	addTube([0, sailY, -0.2], [0.75, barY, barZ]);
-	addTube([-0.75, barY, barZ], [0.75, barY, barZ], 0.03);
+	addTube([-0.75, barY, barZ], [0.75, barY, barZ], 0.018);
 
 	// パイロット
 	const suit = new MeshStandardMaterial({ color: 0x223355, roughness: 0.8 });

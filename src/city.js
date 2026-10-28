@@ -4,7 +4,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
 import { GLTFExtensionsPlugin } from '3d-tiles-renderer/plugins';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
-import { BufferGeometry, Mesh } from 'three';
+import { BufferGeometry, Mesh, MeshLambertMaterial } from 'three';
 import { ecefToWorld } from './geo.js';
 
 BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -57,11 +57,12 @@ export class City {
 				model.traverse((o) => {
 					if (o.isMesh) {
 						o.geometry.computeBoundsTree();
-						if (o.material) {
-							// PLATEAU のテクスチャは陰影込みなので弱めにライティング
-							o.material.metalness = 0;
-							o.material.roughness = 1;
-						}
+						// PLATEAU の材質は金属度が高く環境マップ無しでは暗いので Lambert に置き換える
+						const old = o.material;
+						o.material = new MeshLambertMaterial({ map: old.map, color: 0xe8e2d6 });
+						// 壁面写真は暗めなので明るく補正
+						if (old.map) o.material.color.setScalar(1.7);
+						old.dispose();
 					}
 				});
 			});

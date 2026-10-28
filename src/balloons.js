@@ -206,7 +206,7 @@ export class Thermals {
 			// 足元の目印
 			const ring = new Mesh(
 				new CylinderGeometry(t.r, t.r, 1, 48, 1, true),
-				new MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.12, side: DoubleSide, depthWrite: false }),
+				new MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.06, side: DoubleSide, depthWrite: false }),
 			);
 			ring.scale.y = 400;
 			ring.position.copy(t.base).add(new Vector3(0, 200, 0));

@@ -51,7 +51,7 @@ const camera = new PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 60000);
 
 const sky = new Sky();
 sky.scale.setScalar(50000);
-const sun = new Vector3().setFromSphericalCoords(1, MathUtils.degToRad(62), MathUtils.degToRad(215));
+const sun = new Vector3().setFromSphericalCoords(1, MathUtils.degToRad(55), MathUtils.degToRad(320));
 sky.material.uniforms.sunPosition.value.copy(sun);
 sky.material.uniforms.turbidity.value = 4;
 sky.material.uniforms.rayleigh.value = 1.2;
@@ -60,7 +60,7 @@ sky.material.uniforms.mieDirectionalG.value = 0.8;
 sky.material.fog = false;
 scene.add(sky);
 
-scene.add(new HemisphereLight(0xdfeeff, 0x6b604a, 1.6));
+scene.add(new HemisphereLight(0xe6f0ff, 0x7a705a, 2.0));
 const sunLight = new DirectionalLight(0xfff2dd, 2.2);
 sunLight.position.copy(sun).multiplyScalar(1000);
 scene.add(sunLight);
@@ -493,6 +493,7 @@ let terrainTimer = 0;
 const prev = new Vector3();
 
 let frames = 0;
+const debug = { cam: null };
 function loop(now) {
 	requestAnimationFrame(loop);
 	frames++;
@@ -500,7 +501,11 @@ function loop(now) {
 	last = now;
 	const time = now / 1000;
 
-	if (state === 'loading' || state === 'title') {
+	if (debug.cam) {
+		camera.position.copy(debug.cam.pos);
+		camera.up.set(0, 1, 0);
+		camera.lookAt(debug.cam.look);
+	} else if (state === 'loading' || state === 'title') {
 		// タイトル画面: 清水寺の周りをゆっくり回る
 		titleTime += dt;
 		const a = titleTime * 0.05;
@@ -588,4 +593,4 @@ init().catch((e) => {
 });
 
 // デバッグ用
-window.__kiyomizu = { glider, terrain, get state() { return state; }, get flight() { return flight; }, get frames() { return frames; }, city: () => city, camera, startGame, jump };
+window.__kiyomizu = { debug, geoToWorld, glider, terrain, get state() { return state; }, get flight() { return flight; }, get frames() { return frames; }, city: () => city, camera, startGame, jump };
