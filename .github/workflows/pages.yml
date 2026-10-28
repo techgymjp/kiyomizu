@@ -20,8 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run build
       # dist/ を gh-pages ブランチへ公開する
       - uses: peaceiris/actions-gh-pages@v4
