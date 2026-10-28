@@ -49,10 +49,10 @@ export class Fireworks {
 
 	burst(center) {
 		const palette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
-		const n = 320;
+		const n = 420;
 		const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), vel = new Float32Array(n * 3);
 		const v = new Vector3(), c = new Color();
-		const speed = 28 + Math.random() * 12;
+		const speed = 45 + Math.random() * 15;
 		for (let i = 0; i < n; i++) {
 			v.randomDirection().multiplyScalar(speed * (0.85 + Math.random() * 0.15));
 			pos.set([center.x, center.y, center.z], i * 3);
@@ -64,7 +64,7 @@ export class Fireworks {
 		geom.setAttribute('position', new Float32BufferAttribute(pos, 3));
 		geom.setAttribute('color', new Float32BufferAttribute(col, 3));
 		const points = new Points(geom, new PointsMaterial({
-			size: 5, map: this.texture, vertexColors: true, transparent: true, depthWrite: false, blending: AdditiveBlending,
+			size: 8, map: this.texture, vertexColors: true, transparent: true, depthWrite: false, blending: AdditiveBlending,
 		}));
 		points.frustumCulled = false;
 		this.group.add(points);
@@ -93,7 +93,7 @@ export class Fireworks {
 			const b = this.bursts[i];
 			b.life -= dt;
 			const p = b.points.geometry.attributes.position;
-			const drag = Math.exp(-1.6 * dt);
+			const drag = Math.exp(-1.2 * dt);
 			for (let k = 0; k < p.count; k++) {
 				b.vel[k * 3] *= drag;
 				b.vel[k * 3 + 1] = b.vel[k * 3 + 1] * drag - 5 * dt;

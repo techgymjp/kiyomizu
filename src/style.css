@@ -412,7 +412,10 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	.score-pill .icon { font-size: 18px; }
 	.score-pill .sub { font-size: 12px; }
 	.gauges .v { font-size: 15px; }
-	#target { top: auto; bottom: 64px; }
+	#target { max-width: 34vw; padding: 4px 10px 4px 4px; gap: 6px; }
+	#target-arrow { width: 28px; height: 28px; font-size: 15px; }
+	#target-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	#target-info { font-size: 10px; }
 	#wipe { width: 38vw; }
 	#minimap { width: 100px; height: 100px; bottom: auto; top: calc(12px + 38vw * 0.625 + 14px); }
 	#turbo { bottom: 8px; width: 46vw; left: auto; right: 12px; transform: none; }

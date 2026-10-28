@@ -768,5 +768,5 @@ init().catch((e) => {
 window.__kiyomizu = {
 	debug, geoToWorld, glider, terrain, camera, startGame, jump,
 	get state() { return state; }, get flight() { return flight; }, get frames() { return frames; },
-	buildings: () => buildings, balloons: () => balloons,
+	buildings: () => buildings, balloons: () => balloons, fireworks, sound, Vector3,
 };
