@@ -1,0 +1,28 @@
+{
+  "name": "kiyomizu",
+  "version": "1.0.0",
+  "description": "清水の舞台から飛び降りるつもり - 京都の空を飛ぶハングライダーゲーム",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techgymjp/kiyomizu.git"
+  },
+  "bugs": {
+    "url": "https://github.com/techgymjp/kiyomizu/issues"
+  },
+  "homepage": "https://github.com/techgymjp/kiyomizu#readme",
+  "dependencies": {
+    "3d-tiles-renderer": "^0.4.18",
+    "three": "^0.180.0",
+    "three-mesh-bvh": "^0.9.1"
+  },
+  "devDependencies": {
+    "vite": "^6.4.5"
+  },
+  "private": true,
+  "type": "module"
+}
