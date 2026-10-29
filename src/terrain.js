@@ -7,7 +7,7 @@ import { geoToWorld, worldToGeo, lonToTileX, latToTileY, tileXToLon, tileYToLat 
 import { loadImage } from './loader.js';
 
 const DEM_URL = (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/dem_png/${z}/${x}/${y}.png`;
-// 空中写真: 現代 (全国最新写真) と、昭和 (1945〜50年頃に米軍が撮影したもの)
+// 空中写真: 現代 (全国最新写真) と、昭和 (1945〜50年頃に米軍が撮影したもの。白黒なので現代の写真で色をつける)
 const PHOTOS = {
 	now: (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${z}/${x}/${y}.jpg`,
 	showa: (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/ort_USA10/${z}/${x}/${y}.png`,
@@ -116,7 +116,7 @@ class Chunk {
 
 export class Terrain {
 	constructor(scene, { era = 'now' } = {}) {
-		this.photoUrl = PHOTOS[era] ?? PHOTOS.now;
+		this.era = era;
 		this.group = new Group();
 		this.group.name = 'terrain';
 		scene.add(this.group);
@@ -267,17 +267,33 @@ export class Terrain {
 		ctx.fillStyle = '#8f8c80'; // 写真が無い所
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 		const jobs = [];
+		const showa = this.era === 'showa';
 		for (let dx = 0; dx < n; dx++) {
 			for (let dy = 0; dy < n; dy++) {
-				jobs.push(loadImage(this.photoUrl(tz, chunk.x * n + dx, chunk.y * n + dy), prio)
-					.then((bmp) => {
-						ctx.drawImage(bmp, dx * 256, dy * 256);
-						bmp.close();
-					})
-					.catch(() => {}));
+				const x = chunk.x * n + dx, y = chunk.y * n + dy;
+				const load = (url) => loadImage(url, prio).catch(() => null);
+				jobs.push(Promise.all([load(PHOTOS.now(tz, x, y)), showa ? load(PHOTOS.showa(tz, x, y)) : null]).then(([now, old]) => {
+					if (now) ctx.drawImage(now, dx * 256, dy * 256);
+					if (old) {
+						// 昭和の白黒写真に、現代の写真の色合いを乗せてカラーにする
+						// (明るさ = 昭和の写真、色相・彩度 = 現代の写真)
+						ctx.globalCompositeOperation = now ? 'luminosity' : 'source-over';
+						ctx.drawImage(old, dx * 256, dy * 256);
+						ctx.globalCompositeOperation = 'source-over';
+						old.close();
+					}
+					now?.close();
+				}));
 			}
 		}
 		await Promise.all(jobs);
+		if (showa) {
+			// 古いカラー写真のように、少し色あせた暖かい色味に
+			ctx.globalCompositeOperation = 'soft-light';
+			ctx.fillStyle = 'rgba(214, 170, 110, 0.35)';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.globalCompositeOperation = 'source-over';
+		}
 		const tex = new CanvasTexture(canvas);
 		tex.colorSpace = SRGBColorSpace;
 		tex.anisotropy = 8;

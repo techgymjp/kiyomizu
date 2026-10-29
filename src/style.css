@@ -446,8 +446,8 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 #result-title.clear { color: var(--orange); font-size: 40px; }
 
-/* ---------- 昭和初期: 古い写真のようなセピア調 ---------- */
-body.showa #view { filter: sepia(0.7) contrast(1.08) brightness(1.02) saturate(0.85); }
+/* ---------- 昭和初期: 古いカラー写真のような、少し色あせた色味 ---------- */
+body.showa #view { filter: sepia(0.18) saturate(0.9) contrast(1.04); }
 
 @media (max-width: 720px) {
 	#oni { top: 52px; font-size: 12px; }
