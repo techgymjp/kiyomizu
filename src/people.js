@@ -96,6 +96,99 @@ const KINDS = {
 		dyeColors: ['#e8384f', '#f28cb1', '#8a4fd8', '#16a3a3', '#ff8a3d', '#6fb7e8', '#9bd36a'],
 		dye2Colors: ['#1b1b1f', '#f5d042', '#c7254e', '#1d3f8f'],
 	},
+	// モボ: 背広に中折れ帽
+	mobo: {
+		dye: merge([
+			[new CylinderGeometry(0.17, 0.19, 0.62, 10).translate(0, 1.04, 0), WHITE], // 上着
+			[new BoxGeometry(0.11, 0.55, 0.13).translate(-0.24, 1.0, 0), WHITE],
+			[new BoxGeometry(0.11, 0.55, 0.13).translate(0.24, 1.0, 0), WHITE],
+			[new BoxGeometry(0.12, 0.72, 0.14).translate(-0.08, 0.38, 0), WHITE], // ズボン
+			[new BoxGeometry(0.12, 0.72, 0.14).translate(0.08, 0.38, 0), WHITE],
+		]),
+		dye2: merge([
+			[new CylinderGeometry(0.2, 0.2, 0.025, 14).translate(0, 1.58, 0), WHITE], // 帽子のつば
+			[new CylinderGeometry(0.12, 0.13, 0.12, 12).translate(0, 1.64, 0), WHITE],
+		]),
+		fixed: merge([
+			...head('#1b1410'),
+			[new BoxGeometry(0.1, 0.22, 0.02).translate(0, 1.2, -0.18), '#c7254e'], // ネクタイ
+			[new BoxGeometry(0.16, 0.06, 0.26).translate(-0.08, 0.03, -0.03), '#2b1a10'], // 靴
+			[new BoxGeometry(0.16, 0.06, 0.26).translate(0.08, 0.03, -0.03), '#2b1a10'],
+		]),
+		dyeColors: ['#3a3f4a', '#5a4a3a', '#2b2b33', '#6a6a72', '#7a6a50'],
+		dye2Colors: ['#2b2b33', '#5a4a3a', '#d9c9a0'],
+	},
+	// モガ: ひざ丈のワンピースに断髪とクロシェ帽
+	moga: {
+		dye: merge([
+			[new CylinderGeometry(0.14, 0.24, 0.85, 10).translate(0, 0.98, 0), WHITE],
+			[new BoxGeometry(0.09, 0.42, 0.1).translate(-0.2, 1.12, 0), WHITE],
+			[new BoxGeometry(0.09, 0.42, 0.1).translate(0.2, 1.12, 0), WHITE],
+		]),
+		dye2: merge([
+			[new SphereGeometry(0.15, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5).translate(0, 1.52, 0.01), WHITE], // クロシェ帽
+			[new CylinderGeometry(0.19, 0.19, 0.02, 12).translate(0, 1.52, 0), WHITE],
+		]),
+		fixed: merge([
+			...head('#1b1410'),
+			[new CylinderGeometry(0.035, 0.035, 0.55, 6).translate(-0.07, 0.3, 0), '#f1c8a0'], // 脚
+			[new CylinderGeometry(0.035, 0.035, 0.55, 6).translate(0.07, 0.3, 0), '#f1c8a0'],
+			[new BoxGeometry(0.08, 0.06, 0.18).translate(-0.07, 0.03, -0.02), '#c7254e'], // 靴
+			[new BoxGeometry(0.08, 0.06, 0.18).translate(0.07, 0.03, -0.02), '#c7254e'],
+		]),
+		dyeColors: ['#e8384f', '#f28cb1', '#6fb7e8', '#f5d042', '#9bd36a', '#ffffff', '#8a4fd8'],
+		dye2Colors: ['#1b1b1f', '#c7254e', '#1d3f8f', '#f7f0e0'],
+	},
+	// 学生: 黒い詰襟の学生服と学生帽
+	student: {
+		dye: merge([
+			[new CylinderGeometry(0.17, 0.19, 0.62, 10).translate(0, 1.04, 0), WHITE],
+			[new BoxGeometry(0.11, 0.55, 0.13).translate(-0.24, 1.0, 0), WHITE],
+			[new BoxGeometry(0.11, 0.55, 0.13).translate(0.24, 1.0, 0), WHITE],
+			[new BoxGeometry(0.12, 0.72, 0.14).translate(-0.08, 0.38, 0), WHITE],
+			[new BoxGeometry(0.12, 0.72, 0.14).translate(0.08, 0.38, 0), WHITE],
+			[new CylinderGeometry(0.135, 0.13, 0.08, 12).translate(0, 1.6, 0), WHITE], // 学生帽
+			[new BoxGeometry(0.2, 0.02, 0.1).translate(0, 1.57, -0.12), WHITE], // つば
+		]),
+		dye2: null,
+		fixed: merge([
+			...head('#1b1410'),
+			[new BoxGeometry(0.03, 0.03, 0.03).translate(0, 1.2, -0.19), '#f5d042'], // 金ボタン
+			[new BoxGeometry(0.03, 0.03, 0.03).translate(0, 1.05, -0.2), '#f5d042'],
+			[new BoxGeometry(0.03, 0.03, 0.03).translate(0, 0.9, -0.2), '#f5d042'],
+			[new BoxGeometry(0.16, 0.06, 0.26).translate(-0.08, 0.03, -0.03), '#1b1b1f'],
+			[new BoxGeometry(0.16, 0.06, 0.26).translate(0.08, 0.03, -0.03), '#1b1b1f'],
+		]),
+		dyeColors: ['#15161c', '#1b1d26'],
+		dye2Colors: null,
+	},
+	// 人力車: 車夫が客を乗せた車を引く (-Z が進行方向)
+	rickshaw: {
+		dye: merge([
+			[new BoxGeometry(0.8, 0.5, 0.7).translate(0, 0.95, 0.9), WHITE], // 座席
+			[new BoxGeometry(0.85, 0.7, 0.08).translate(0, 1.4, 1.25), WHITE], // 背もたれ
+			[new SphereGeometry(0.5, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).scale(0.9, 0.9, 0.8).translate(0, 1.55, 1.05), WHITE], // 幌
+		]),
+		dye2: null,
+		fixed: merge([
+			[new CylinderGeometry(0.6, 0.6, 0.06, 16).rotateZ(Math.PI / 2).translate(-0.48, 0.6, 1.0), '#3a2a22'], // 車輪
+			[new CylinderGeometry(0.6, 0.6, 0.06, 16).rotateZ(Math.PI / 2).translate(0.48, 0.6, 1.0), '#3a2a22'],
+			[new BoxGeometry(0.05, 0.05, 1.8).translate(-0.3, 0.85, -0.2), '#3a2a22'], // かじ棒
+			[new BoxGeometry(0.05, 0.05, 1.8).translate(0.3, 0.85, -0.2), '#3a2a22'],
+			// 車夫 (法被と股引、笠)
+			[new CylinderGeometry(0.16, 0.18, 0.55, 8).translate(0, 1.08, -1.0), '#1d3f8f'],
+			[new BoxGeometry(0.12, 0.75, 0.14).translate(-0.08, 0.4, -1.0), '#1b1b1f'],
+			[new BoxGeometry(0.12, 0.75, 0.14).translate(0.08, 0.4, -1.0), '#1b1b1f'],
+			[new SphereGeometry(0.11, 8, 6).translate(0, 1.47, -1.0), '#e0b48f'],
+			[new ConeGeometry(0.26, 0.12, 12).translate(0, 1.62, -1.0), '#d9c08a'], // 笠
+			// 乗っているお客さん
+			[new CylinderGeometry(0.17, 0.2, 0.5, 8).translate(0, 1.42, 0.85), '#e8384f'],
+			[new SphereGeometry(0.11, 8, 6).translate(0, 1.78, 0.85), '#f1c8a0'],
+			[new SphereGeometry(0.12, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55).translate(0, 1.8, 0.87), '#1b1410'],
+		]),
+		dyeColors: ['#1b1b1f', '#3a2a22', '#2b2b33'],
+		dye2Colors: null,
+	},
 	// 着物に袴の男性
 	man: {
 		dye: merge([
@@ -130,7 +223,8 @@ const KINDS = {
 };
 
 export class People {
-	constructor(scene, spots, terrain, buildings, { perSpot = PER_SPOT } = {}) {
+	constructor(scene, spots, terrain, buildings, { perSpot = PER_SPOT, era = 'now' } = {}) {
+		this.scene = scene;
 		this.terrain = terrain;
 		this.buildings = buildings;
 		const mat = new MeshLambertMaterial({ vertexColors: true });
@@ -138,15 +232,22 @@ export class People {
 		this.crowds = spots.map((spot) => ({
 			spot, center: geoToWorld(spot.lat, spot.lon, 0), people: [], active: false, placed: false, cheerCooldown: 0,
 		}));
-		const counts = { woman: 0, maiko: 0, man: 0, samurai: 0 };
+		const counts = Object.fromEntries(Object.keys(KINDS).map((k) => [k, 0]));
+		// 時代ごとの人の構成 (割合)。昭和初期にはお侍さんはいない
+		const mix = era === 'showa'
+			? [['woman', 0.28], ['man', 0.12], ['maiko', 0.08], ['mobo', 0.13], ['moga', 0.13], ['student', 0.16], ['rickshaw', 0.1]]
+			: [['samurai', SAMURAI_RATE], ['maiko', MAIKO_RATE], ['woman', 0.48], ['man', 0.34]];
 		for (const crowd of this.crowds) {
 			for (let i = 0; i < perSpot; i++) {
-				const r = Math.random();
-				const kind = r < SAMURAI_RATE ? 'samurai' : r < SAMURAI_RATE + MAIKO_RATE ? 'maiko' : r < 0.66 ? 'woman' : 'man';
+				let r = Math.random(), kind = mix[mix.length - 1][0];
+				for (const [k, rate] of mix) {
+					if (r < rate) { kind = k; break; }
+					r -= rate;
+				}
 				crowd.people.push({
 					kind, idx: counts[kind]++, x: 0, z: 0, y: 0, tx: 0, tz: 0, heading: 0,
 					// 侍はゆっくり堂々と歩く
-					speed: kind === 'samurai' ? 0.55 : kind === 'maiko' ? 0.45 : 0.6 + Math.random() * 0.45,
+					speed: { samurai: 0.55, maiko: 0.45, rickshaw: 2.2 }[kind] ?? 0.6 + Math.random() * 0.45,
 					phase: Math.random() * 10, wait: Math.random() * 6, placed: false,
 				});
 			}
@@ -175,6 +276,16 @@ export class People {
 		}
 		this.dummy = new Object3D();
 		this.hideAll();
+	}
+
+	// 時代を切り替えるときに作り直すため
+	dispose() {
+		for (const list of Object.values(this.meshes)) {
+			for (const m of list) {
+				this.scene.remove(m);
+				m.dispose();
+			}
+		}
 	}
 
 	setMatrix(p, matrix) {
