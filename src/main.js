@@ -242,6 +242,7 @@ function toggleCamera() {
 function setPilotVisible(v) {
 	glider.object.getObjectByName('pilotHead').visible = v;
 	glider.object.getObjectByName('pilotBody').visible = v;
+	glider.object.traverse((o) => { if (o.name === 'centerPole') o.visible = v; });
 }
 
 function keepAboveGround(p, margin) {

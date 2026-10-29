@@ -178,8 +178,8 @@ function buildModel() {
 	addTube([0, sailY + 0.12, noseZ], [-span / 2, sailY + 0.44, noseZ + sweep], 0.028);
 	addTube([0, sailY + 0.12, noseZ], [span / 2, sailY + 0.44, noseZ + sweep], 0.028);
 	addTube([-span * 0.3, sailY + 0.25, noseZ + sweep * 0.6 + 0.2], [span * 0.3, sailY + 0.25, noseZ + sweep * 0.6 + 0.2], 0.02);
-	// キングポスト
-	addTube([0, sailY + 0.1, -0.2], [0, sailY + 0.75, -0.2], 0.02);
+	// キングポスト (パイロット目線では視界の邪魔なので隠す)
+	addTube([0, sailY + 0.1, -0.2], [0, sailY + 0.75, -0.2], 0.02).name = 'centerPole';
 	// コントロールバー (A字フレーム)
 	const barY = -0.42, barZ = -0.62, barW = 0.72;
 	addTube([0, sailY, -0.15], [-barW, barY, barZ]);
@@ -191,7 +191,7 @@ function buildModel() {
 		addTube([sx * barW, barY, barZ], [sx * span / 2 * 0.62, sailY + 0.33, noseZ + sweep * 0.62 + 0.1], 0.005, root, wire);
 		addTube([0, sailY + 0.75, -0.2], [sx * span / 2 * 0.62, sailY + 0.33, noseZ + sweep * 0.62 + 0.1], 0.005, root, wire);
 	}
-	addTube([0, barY, barZ], [0, sailY + 0.05, noseZ], 0.005, root, wire);
+	addTube([0, barY, barZ], [0, sailY + 0.05, noseZ], 0.005, root, wire).name = 'centerPole';
 
 	// パイロット (うつ伏せでハーネスに入っている)
 	const body = new Group();

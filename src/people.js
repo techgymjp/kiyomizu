@@ -2,7 +2,7 @@
 // ハングライダーが近くを通ると、立ち止まって見上げる
 import {
 	InstancedMesh, Float32BufferAttribute, MeshLambertMaterial, Object3D, Color,
-	CylinderGeometry, SphereGeometry, BoxGeometry, DynamicDrawUsage,
+	CylinderGeometry, SphereGeometry, BoxGeometry, ConeGeometry, DynamicDrawUsage,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { geoToWorld } from './geo.js';
