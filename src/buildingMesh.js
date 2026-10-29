@@ -148,7 +148,8 @@ class Builder {
 	}
 
 	// 外形に沿った壁 (y0〜y1)。floorH ごとに v が1進む
-	walls(ring, y0, y1, bay, floorH, cell, color, groundCell = null, groundH = 0) {
+	// vBase: 模様の基準になる高さ (地面)。壁は地面より下 (y0) から立ち上げて浮いて見えないようにする
+	walls(ring, y0, y1, bay, floorH, cell, color, groundCell = null, groundH = 0, vBase = y0) {
 		const n = ring.length / 2;
 		let u = 0;
 		for (let i = 0; i < n; i++) {
@@ -159,13 +160,13 @@ class Builder {
 			const bays = Math.max(1, Math.round(len / bay));
 			const u1 = u + bays;
 			const band = (ya, yb, c, vOffset) => {
-				const va = (ya - y0) / floorH - vOffset, vb = (yb - y0) / floorH - vOffset;
+				const va = (ya - vBase) / floorH - vOffset, vb = (yb - vBase) / floorH - vOffset;
 				this.quad([x0, ya, z0], [x1, ya, z1], [x1, yb, z1], [x0, yb, z0],
 					[u, va], [u1, va], [u1, vb], [u, vb], c, color);
 			};
-			if (groundCell !== null && y1 - y0 > groundH + 0.5) {
-				band(y0, y0 + groundH, groundCell, 0);
-				band(y0 + groundH, y1, cell, groundH / floorH);
+			if (groundCell !== null && y1 - vBase > groundH + 0.5) {
+				band(y0, vBase + groundH, groundCell, 0);
+				band(vBase + groundH, y1, cell, groundH / floorH);
 			} else {
 				band(y0, y1, groundCell ?? cell, 0);
 			}
@@ -246,6 +247,7 @@ class Builder {
 }
 
 const DEG = Math.PI / 180;
+const SINK = 13; // 壁を地面の下へ延ばす深さ (m)。地形との差は最大 12m ほど
 
 // 色 (sRGB→リニア近似は省略。atlas の色に掛け合わせる係数)
 const tint = (h, a, b) => [a[0] + (b[0] - a[0]) * h, a[1] + (b[1] - a[1]) * h, a[2] + (b[2] - a[2]) * h];
@@ -287,7 +289,9 @@ export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, 
 		if (!detail && area < 50 && b.type !== TYPE.SACRED) continue;
 		const h = hash(b.ring[0], b.ring[1]);
 		const top = b.base + b.height;
-		const base = b.base - 1.5; // 斜面でも地面に埋まるように
+		// 地形は粗い格子なので斜面では建物の足元より低くなることがある。壁を地中深くまで延ばして浮いて見えないようにする
+		const base = b.base - SINK;
+		const g = b.base;
 		const ring = b.ring;
 		let type = b.type;
 		if (showa) {
@@ -302,15 +306,16 @@ export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, 
 				const fill = rect ? area / (4 * rect.hu * rect.hv) : 0;
 				const wallColor = pick(showa ? WALL_OLD : WALL_POP, h);
 				const roofColor = pick(showa ? ROOF_OLD : ROOF_POP, hash(h, 3.1));
-				if (rect && fill > (showa ? 0.4 : 0.62) && rect.hv > 1.5) {
+				// 外形が長方形に近いときだけ勾配屋根 (L字などに掛けると屋根が宙に張り出して見える)
+				if (rect && fill > 0.82 && rect.hv > 1.5) {
 					const pitch = (detail ? 24 : 22) * DEG;
 					const rise = Math.min(rect.hv * Math.tan(pitch), Math.max(1.2, b.height * 0.45));
 					const y0 = Math.max(b.base + 2.4, top - rise);
-					B.walls(ring, base, y0, 3.6, 3, CELL.HOUSE_UPPER, wallColor, detail ? CELL.HOUSE_GROUND : null, 1.5 + 3);
+					B.walls(ring, base, y0, 3.6, 3, CELL.HOUSE_UPPER, wallColor, detail ? CELL.HOUSE_GROUND : null, 3, g);
 					const style = (rect.hu / rect.hv > 1.5 || h > 0.55) ? 'gable' : 'hip';
 					B.pitchedRoof(rect, y0, top - y0, detail ? 0.45 : 0.3, style, CELL.KAWARA, roofColor, CELL.HOUSE_UPPER, wallColor);
 				} else {
-					B.walls(ring, base, top, 3.6, 3, CELL.HOUSE_UPPER, wallColor, detail ? CELL.HOUSE_GROUND : null, 1.5 + 3);
+					B.walls(ring, base, top, 3.6, 3, CELL.HOUSE_UPPER, wallColor, detail ? CELL.HOUSE_GROUND : null, 3, g);
 					B.flatRoof(ring, top, CELL.KAWARA, roofColor, 1.2);
 				}
 				break;
@@ -324,28 +329,28 @@ export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, 
 					break;
 				}
 				const roofColor = tint(h, [0.7, 0.72, 0.78], [0.55, 0.57, 0.62]);
-				if (rect) {
+				if (rect && area / (4 * rect.hu * rect.hv) > 0.8) {
 					const pitch = 33 * DEG;
 					const rise = Math.min(rect.hv * Math.tan(pitch), b.height * 0.6);
 					const y0 = Math.max(b.base + 2.5, top - rise);
-					B.walls(ring, base, y0, 3, 3.5, CELL.TEMPLE_WALL, [1, 1, 1]);
+					B.walls(ring, base, y0, 3, 3.5, CELL.TEMPLE_WALL, [1, 1, 1], null, 0, g);
 					const eave = Math.min(3, 0.8 + rect.hv * 0.15);
 					B.pitchedRoof(rect, y0, top - y0, eave, 'hip', CELL.TEMPLE_ROOF, roofColor);
 				} else {
-					B.walls(ring, base, top, 3, 3.5, CELL.TEMPLE_WALL, [1, 1, 1]);
+					B.walls(ring, base, top, 3, 3.5, CELL.TEMPLE_WALL, [1, 1, 1], null, 0, g);
 					B.flatRoof(ring, top, CELL.TEMPLE_ROOF, roofColor, 1.2);
 				}
 				break;
 			}
 			case TYPE.FACTORY: {
 				const c = pick(WALL_POP, h);
-				B.walls(ring, base, top, 4, 4, CELL.FACTORY_WALL, c);
+				B.walls(ring, base, top, 4, 4, CELL.FACTORY_WALL, c, null, 0, g);
 				B.flatRoof(ring, top, CELL.METAL_ROOF, pick(FLAT_POP, hash(h, 1.7)), 6);
 				break;
 			}
 			case TYPE.SHED: {
 				const c = pick(WALL_POP, h);
-				B.walls(ring, base, top, 3, 2.5, CELL.PLAIN_WALL, c);
+				B.walls(ring, base, top, 3, 2.5, CELL.PLAIN_WALL, c, null, 0, g);
 				B.flatRoof(ring, top, CELL.METAL_ROOF, [0.6, 0.6, 0.62], 6);
 				break;
 			}
@@ -358,7 +363,7 @@ export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, 
 				const apartment = h > 0.6 && b.height < 45;
 				const wallColor = pick(WALL_POP, hash(h, apartment ? 2.2 : 5.3));
 				B.walls(ring, base, top, 3.2, 3.3, apartment ? CELL.APARTMENT_UPPER : CELL.OFFICE_UPPER, wallColor,
-					detail ? CELL.SHOP_GROUND : null, 1.5 + 3.6);
+					detail ? CELL.SHOP_GROUND : null, 3.6, g);
 				B.flatRoof(ring, top, CELL.CONCRETE_ROOF, pick(FLAT_POP, hash(h, 9.1)), 8);
 			}
 		}
@@ -472,7 +477,7 @@ function scaled(rect, k, kv = k) {
 
 // 基壇 (石の台)
 function podium(B, rect, base, h) {
-	B.walls(squareRingRect(scaled(rect, 1)), base - 2, base + h, 2, 2, CELL.PLAIN_WALL, [0.82, 0.8, 0.76]);
+	B.walls(squareRingRect(scaled(rect, 1)), base - SINK, base + h, 2, 2, CELL.PLAIN_WALL, [0.82, 0.8, 0.76]);
 	B.flatRoof(squareRingRect(rect), base + h, CELL.PLAIN_WALL, [0.78, 0.76, 0.72], 4);
 }
 
@@ -507,7 +512,7 @@ function gate(B, rect, base, height, lm) {
 	const [rc, rcol] = ROOF[lm.roof] ?? ROOF.gray;
 	const H = height;
 	const lower = scaled(rect, 0.8);
-	B.walls(squareRingRect(lower), base - 1, base + H * 0.34, 2.4, 3.5, wc, wcol);
+	B.walls(squareRingRect(lower), base - SINK, base + H * 0.34, 2.4, 3.5, wc, wcol);
 	B.pitchedRoof(lower, base + H * 0.34, H * 0.08, Math.max(1, rect.hv * 0.35), 'hip', rc, rcol);
 	const upper = scaled(rect, 0.72);
 	B.walls(squareRingRect(upper), base + H * 0.4, base + H * 0.62, 2.4, 3.5, wc, wcol);
@@ -529,7 +534,7 @@ function pagoda(B, rect, baseY, height, lm) {
 		const w = w0 * (1 - t * (0.4 / tiers));
 		const y0 = baseY + 1.2 + t * tierH;
 		const core = { ...rect, hu: w * 0.6, hv: w * 0.6 };
-		B.walls(squareRingRect(core), y0 - (t ? 0.5 : 1.5), y0 + tierH * 0.5, 1.8, 2.8, wc, wcol.map((v) => v * 0.75));
+		B.walls(squareRingRect(core), y0 - (t ? 0.5 : SINK), y0 + tierH * 0.5, 1.8, 2.8, wc, wcol.map((v) => v * 0.75));
 		// 大きく張り出した軒 (塔の幅いっぱいに広がる)
 		B.pitchedRoof(core, y0 + tierH * 0.5, tierH * 0.4, w * 0.95, 'hip', CELL.TEMPLE_ROOF, roofColor);
 	}
@@ -547,7 +552,7 @@ function pagoda(B, rect, baseY, height, lm) {
 function kinkaku(B, rect, base, H) {
 	const r = scaled(rect, 0.9);
 	const hiwada = [CELL.HIWADA, [0.75, 0.68, 0.62]];
-	B.walls(squareRingRect(r), base - 1, base + H * 0.3, 2.5, 3, CELL.TEMPLE_WALL, [0.95, 0.85, 0.7]);
+	B.walls(squareRingRect(r), base - SINK, base + H * 0.3, 2.5, 3, CELL.TEMPLE_WALL, [0.95, 0.85, 0.7]);
 	B.pitchedRoof(r, base + H * 0.3, H * 0.06, 1.2, 'hip', hiwada[0], hiwada[1]);
 	B.walls(squareRingRect(scaled(r, 0.95)), base + H * 0.36, base + H * 0.58, 2.5, 3, CELL.GOLD, [1.25, 1.2, 1.1]);
 	B.pitchedRoof(scaled(r, 0.95), base + H * 0.58, H * 0.06, 1.1, 'hip', hiwada[0], hiwada[1]);
@@ -561,7 +566,7 @@ function kinkaku(B, rect, base, H) {
 // 銀閣 (慈照寺 観音殿)
 function ginkaku(B, rect, base, H) {
 	const r = scaled(rect, 0.9);
-	B.walls(squareRingRect(r), base - 1, base + H * 0.38, 2.5, 3, CELL.TEMPLE_WALL, [0.7, 0.6, 0.5]);
+	B.walls(squareRingRect(r), base - SINK, base + H * 0.38, 2.5, 3, CELL.TEMPLE_WALL, [0.7, 0.6, 0.5]);
 	B.pitchedRoof(r, base + H * 0.38, H * 0.08, 1.1, 'hip', CELL.HIWADA, [0.7, 0.65, 0.6]);
 	const top = scaled(r, 0.7);
 	B.walls(squareRingRect(top), base + H * 0.46, base + H * 0.72, 2, 3, CELL.TEMPLE_WALL, [0.45, 0.4, 0.38]);
@@ -592,7 +597,7 @@ function tower(B, ring, baseY, height) {
 	cx /= n; cz /= n;
 	// 足元のビル部分
 	const podium = Math.min(31, height * 0.25);
-	B.walls(ring, baseY - 1.5, baseY + podium, 3.2, 3.3, CELL.OFFICE_UPPER, [1, 1, 1], CELL.SHOP_GROUND, 4);
+	B.walls(ring, baseY - SINK, baseY + podium, 3.2, 3.3, CELL.OFFICE_UPPER, [1, 1, 1], CELL.SHOP_GROUND, 4);
 	B.flatRoof(ring, baseY + podium, CELL.CONCRETE_ROOF, [0.9, 0.9, 0.9]);
 	// 円筒の塔身 (上に向かって細く、展望室で膨らむ)
 	const seg = 16;

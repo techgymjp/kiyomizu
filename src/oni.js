@@ -5,9 +5,11 @@ import {
 } from 'three';
 
 export const CATCH_RADIUS = 7;
-const FIRST_SPAWN = 8; // 秒
+const FIRST_SPAWN = 5; // 秒
 const NEXT_SPAWN = 70; // 秒ごとに鬼が増える
-const MAX_ONI = 4;
+const MAX_ONI = 6;
+// 最初に出てくる3匹: 前方・左後ろ・右後ろ (向きは進行方向からの角度)
+const FIRST_DIRS = [0, Math.PI - 0.7, Math.PI + 0.7];
 const SPAWN_DIST = 520;
 const SCALE = 2.6;
 
@@ -134,7 +136,7 @@ function buildOni(color) {
 	return g;
 }
 
-const COLORS = [0xd83a2e, 0x2f5fd8, 0x2fa84f, 0x8a3fd8];
+const COLORS = [0xd83a2e, 0x2f5fd8, 0x2fa84f, 0x8a3fd8, 0xf0a020, 0x222222];
 
 export class Oni {
 	constructor(scene) {
@@ -151,12 +153,13 @@ export class Oni {
 		this.nextSpawn = FIRST_SPAWN;
 	}
 
-	spawn(target, heading) {
+	// dir: 進行方向からの角度 (0 = 前方)
+	spawn(target, heading, dir) {
 		const n = this.list.length;
 		const obj = buildOni(COLORS[n % COLORS.length]);
-		// 後ろ側から (2匹目以降は左右からも)
-		const a = heading + Math.PI + (n === 0 ? 0 : (n % 2 ? 1 : -1) * (0.6 + n * 0.3));
-		const pos = new Vector3(target.x + Math.sin(a) * SPAWN_DIST, target.y + 40, target.z - Math.cos(a) * SPAWN_DIST);
+		const a = heading + dir;
+		const dist = dir === 0 ? SPAWN_DIST * 1.4 : SPAWN_DIST; // 前方の鬼は少し遠くから向かってくる
+		const pos = new Vector3(target.x + Math.sin(a) * dist, target.y + 40, target.z - Math.cos(a) * dist);
 		obj.position.copy(pos);
 		this.scene.add(obj);
 		const oni = { obj, pos, vel: new Vector3(), phase: Math.random() * 6, n };
@@ -170,7 +173,13 @@ export class Oni {
 		if (active) {
 			this.time += dt;
 			if (this.time >= this.nextSpawn && this.list.length < MAX_ONI) {
-				out.spawned = this.spawn(glider.position, glider.yaw);
+				if (!this.list.length) {
+					out.spawned = FIRST_DIRS.map((d) => this.spawn(glider.position, glider.yaw, d));
+				} else {
+					// 追加の鬼は後ろの左右から交互に
+					const k = this.list.length;
+					out.spawned = [this.spawn(glider.position, glider.yaw, Math.PI + (k % 2 ? 1 : -1) * (0.3 + 0.2 * k))];
+				}
 				this.nextSpawn += NEXT_SPAWN;
 			}
 		}
