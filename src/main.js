@@ -662,7 +662,7 @@ function updateOni(dt, active) {
 	if (!active) return;
 	if (r.spawned) {
 		sound.oniLaugh();
-		showMessage(r.spawned.length > 1 ? `👹 鬼が${r.spawned.length}匹来た！\n前からも来るぞ！` : `👹 鬼が増えた！ (${oni.list.length}匹)`, 2.4);
+		showMessage(r.spawned.length > 1 ? `👹 鬼が${r.spawned.length}匹来た！\n前から2匹、後ろから1匹！` : `👹 鬼が増えた！ (${oni.list.length}匹)`, 2.4);
 	}
 	flight.oniDist = r.nearest;
 	// 近いほど速くなる心臓の音
