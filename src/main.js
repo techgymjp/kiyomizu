@@ -21,6 +21,8 @@ import { LANDMARK_SPECS } from './landmarkSpecs.js';
 const $ = (id) => document.getElementById(id);
 const TURBO_SEC = 5; // ターボ1つぶんの噴射時間
 const START_TURBOS = 1;
+// シェアするページ (ゲームの紹介記事)
+const SHARE_URL = 'https://techgym.jp/column/claude-code-game-kiyomizu/';
 
 // ---------- 設定 ----------
 const settings = {
@@ -417,7 +419,7 @@ $('btn-save').addEventListener('click', () => {
 });
 $('btn-share').addEventListener('click', () => {
 	const text = `清水の舞台から飛び降りるつもりで、紅葉の京都の空を ${(flight.distance / 1000).toFixed(2)}km 飛んでアドバルーンを ${flight.checkpoints.length} 個割った！🎈`;
-	const url = location.href.split('#')[0].split('?')[0];
+	const url = SHARE_URL;
 	open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=${encodeURIComponent('清水の舞台から飛び降りるつもり')}`, '_blank');
 });
 
