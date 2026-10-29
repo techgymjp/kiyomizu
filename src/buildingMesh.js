@@ -383,6 +383,21 @@ function assignLandmarks(list, landmarks, bounds) {
 	for (const lm of landmarks) {
 		const inChunk = !bounds || (lm.x >= bounds.x0 && lm.x < bounds.x1 && lm.z >= bounds.z0 && lm.z < bounds.z1);
 		let best = null, bestScore = Infinity;
+		// 塔は「近くで一番高い、細長い寺社の建物」を探す (座標が少しずれていても合わせられる)
+		if (lm.kind === 'pagoda') {
+			for (const b of list) {
+				if (b.landmark || b.type !== TYPE.SACRED || b.height < 12) continue;
+				const cx = (b.minX + b.maxX) / 2, cz = (b.minZ + b.maxZ) / 2;
+				if (Math.hypot(cx - lm.x, cz - lm.z) > 40) continue;
+				const r = minRect(b.ring);
+				if (!r || r.hu / r.hv > 1.4 || b.height < r.hv * 2 * 1.05) continue;
+				if (-b.height < bestScore) { bestScore = -b.height; best = b; }
+			}
+			if (best) {
+				best.landmark = lm;
+				continue;
+			}
+		}
 		for (const b of list) {
 			if (b.landmark || b.type === TYPE.SHED) continue;
 			if (lm.x < b.minX - 40 || lm.x > b.maxX + 40 || lm.z < b.minZ - 40 || lm.z > b.maxZ + 40) continue;
@@ -508,15 +523,15 @@ function pagoda(B, rect, baseY, height, lm) {
 	const spire = height * 0.24;
 	const body = height - spire;
 	const tierH = body / tiers;
-	const roofColor = [0.62, 0.63, 0.68];
+	const roofColor = [0.55, 0.56, 0.6];
 	podium(B, scaled(r0, 1.25), baseY, 1.2);
 	for (let t = 0; t < tiers; t++) {
 		const w = w0 * (1 - t * (0.4 / tiers));
 		const y0 = baseY + 1.2 + t * tierH;
-		const core = { ...rect, hu: w * 0.62, hv: w * 0.62 };
-		B.walls(squareRingRect(core), y0 - (t ? 0.5 : 1.5), y0 + tierH * 0.6, 1.8, 2.8, wc, wcol);
-		// 大きく張り出した軒
-		B.pitchedRoof(core, y0 + tierH * 0.6, tierH * 0.28, w * 0.7, 'hip', CELL.TEMPLE_ROOF, roofColor);
+		const core = { ...rect, hu: w * 0.6, hv: w * 0.6 };
+		B.walls(squareRingRect(core), y0 - (t ? 0.5 : 1.5), y0 + tierH * 0.5, 1.8, 2.8, wc, wcol.map((v) => v * 0.75));
+		// 大きく張り出した軒 (塔の幅いっぱいに広がる)
+		B.pitchedRoof(core, y0 + tierH * 0.5, tierH * 0.4, w * 0.95, 'hip', CELL.TEMPLE_ROOF, roofColor);
 	}
 	// 相輪 (九輪)
 	const top = baseY + 1.2 + body;

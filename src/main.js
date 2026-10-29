@@ -739,7 +739,7 @@ function loop(now) {
 	if (state !== 'flying') updateOni(dt, false);
 	if (thermals) thermals.update(time);
 	fireworks.update(dt);
-	const focus = state === 'title' || state === 'loading' ? startPos : glider.position;
+	const focus = debug.cam ? debug.cam.pos : state === 'title' || state === 'loading' ? startPos : glider.position;
 	if (people && people.update(dt, time, focus) && state === 'flying') sound.cheer();
 	sound.update(dt, {
 		speed: glider.speed, jetting: glider.jetting, active: state === 'flying',
@@ -830,5 +830,5 @@ init().catch((e) => {
 window.__kiyomizu = {
 	debug, geoToWorld, glider, terrain, camera, startGame, jump,
 	get state() { return state; }, get flight() { return flight; }, get frames() { return frames; },
-	buildings: () => buildings, balloons: () => balloons, fireworks, sound, Vector3,
+	buildings: () => buildings, balloons: () => balloons, fireworks, sound, oni, Vector3,
 };

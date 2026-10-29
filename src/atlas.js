@@ -18,7 +18,7 @@ function noise(ctx, x, y, w, h, amount, seed = 1) {
 	// ざらつき (かすかな明暗のむら)
 	for (let i = 0; i < (w * h) / 40; i++) {
 		const v = r() < 0.5 ? 0 : 255;
-		ctx.fillStyle = `rgba(${v},${v},${v},${amount * 0.35 * r()})`;
+		ctx.fillStyle = `rgba(${v},${v},${v},${amount * 0.15 * r()})`;
 		const s = 2 + r() * 6;
 		ctx.fillRect(x + r() * w, y + r() * h, s, s);
 	}
