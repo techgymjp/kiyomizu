@@ -8,9 +8,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 export const CATCH_RADIUS = 7;
 const FIRST_SPAWN = 0.5; // 秒
 const CP_PER_ONI = 1; // アドバルーンをこの数割るごとに鬼が1匹増える
-const MAX_ONI = 52; // 10匹 + 42か所
+const MAX_ONI = 62; // 20匹 + 42か所
 // 最初に京都市内の名所のまわりに散らばっている鬼の数
-const FIRST_COUNT = 10;
+const FIRST_COUNT = 20;
 const SCALE = 2.6;
 
 function tigerTexture() {
