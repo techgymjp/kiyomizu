@@ -796,10 +796,12 @@ async function init() {
 	});
 	buildStage(scene, (x, z) => terrain.heightAtWorld(x, z));
 	// 名所の建物 (外形が無いときに建てる地面の高さも渡す)。昭和初期には京都タワーは無い
-	buildings.setLandmarks(LANDMARK_SPECS.filter((l) => !(showaEra && l.kind === 'tower')).map((l) => {
+	const specs = LANDMARK_SPECS.filter((l) => !(showaEra && l.kind === 'tower')).map((l) => {
 		const p = geoToWorld(l.lat, l.lon, 0);
 		return { ...l, x: p.x, z: p.z, y: terrain.heightAtWorld(p.x, p.z) };
-	}), (x, z) => terrain.heightAtWorld(x, z));
+	});
+	buildings.setLandmarks(specs.filter((l) => !l.standalone), (x, z) => terrain.heightAtWorld(x, z));
+	buildings.addStandalone(specs.filter((l) => l.standalone));
 	buildProps(scene, (x, z) => terrain.heightAtWorld(x, z));
 
 	balloons = new Balloons(scene, SPOTS, terrain);

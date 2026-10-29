@@ -36,6 +36,9 @@ export const LANDMARK_SPECS = [
 	{ name: '醍醐寺 五重塔', lat: 34.94968, lon: 135.82103, kind: 'pagoda', tiers: 5, wall: 'vermilion', free: { w: 6.6, h: 38, deg: 0 } },
 	{ name: '京都タワー', lat: 34.98756, lon: 135.75928, kind: 'tower' },
 	{ name: '大徳寺', lat: 35.04400, lon: 135.74600, kind: 'hall', roof: 'gray', wall: 'wood' },
+	// 鞍馬・貴船 (建物データの範囲外なので単独で建てる)
+	{ name: '鞍馬寺 本殿金堂', lat: 35.11806, lon: 135.77080, kind: 'hall', roof: 'gray', wall: 'vermilion', standalone: true, free: { w: 20, d: 14, h: 14, deg: 0 } },
+	{ name: '貴船神社 本宮', lat: 35.12168, lon: 135.76284, kind: 'shrine', roof: 'hiwada', standalone: true, free: { w: 10, d: 8, h: 9, deg: 0 } },
 	{ name: '龍安寺', lat: 35.03448, lon: 135.71825, kind: 'hall', roof: 'hiwada', wall: 'white' },
 ];
 
@@ -46,5 +49,11 @@ export const SENBON_TORII = [
 	[34.96745, 135.77370], [34.96770, 135.77480], [34.96800, 135.77560], [34.96760, 135.77640], [34.96700, 135.77700],
 	[34.96640, 135.77780], [34.96560, 135.77850], [34.96450, 135.77950], [34.96400, 135.78100], [34.96380, 135.78300],
 ];
+
+// 貴船神社の参道の朱い灯籠 (石段の両側)
+export const KIBUNE_TOURO = { from: [35.12105, 135.76305], to: [35.12160, 135.76286], spacing: 3, width: 4 };
+
+// 金閣寺の前の鏡湖池 (中心・東西の幅・南北の幅 m)
+export const KYOKOCHI = { lat: 35.03908, lon: 135.72912, w: 90, d: 52 };
 
 export const TOGETSUKYO = { from: [35.01392, 135.67766], to: [35.01258, 135.67782], width: 11 };

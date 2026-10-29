@@ -4,7 +4,7 @@ import {
 	IcosahedronGeometry, CylinderGeometry,
 } from 'three';
 import { createAtlas } from './atlas.js';
-import { parseChunk } from './buildingMesh.js';
+import { parseChunk, buildChunkGeometry } from './buildingMesh.js';
 
 const FAR = 4200; // これより遠いチャンクは表示しない
 const RELEASE = 5200;
@@ -157,6 +157,17 @@ export class Buildings {
 		chunk.buffer = null;
 		chunk.list = null;
 		chunk.grid = null;
+	}
+
+	// 建物データの無い場所の名所を単独で建てる
+	addStandalone(specs) {
+		const arrays = buildChunkGeometry([], 1, specs, null, this.era);
+		const geom = new BufferGeometry();
+		for (const [k, n] of [['position', 3], ['normal', 3], ['uv', 2], ['color', 3], ['cell', 1]]) geom.setAttribute(k, new BufferAttribute(arrays[k], n));
+		geom.computeBoundingSphere();
+		const mesh = new Mesh(geom, this.material);
+		mesh.castShadow = mesh.receiveShadow = true;
+		this.group.add(mesh);
 	}
 
 	// 名所の定義 (ワールド座標と、外形が無いとき用の地面の高さ y を含む)と、地面の高さを返す関数

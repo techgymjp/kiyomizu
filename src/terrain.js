@@ -63,8 +63,9 @@ function autumn(material) {
 			.replace('#include <map_fragment>', `#include <map_fragment>
 				{
 					vec3 c = diffuseColor.rgb;
-					float green = c.g - max(c.r, c.b);
-					float m = smoothstep(0.005, 0.05, green);
+					// 暗い森の緑も拾えるよう、明るさに対する緑の割合で判定する
+					float sum = c.r + c.g + c.b + 1e-3;
+					float m = smoothstep(0.35, 0.41, c.g / sum) * smoothstep(0.03, 0.1, sum);
 					float n = vnoise(vWorld.xz / 18.0) * 0.6 + vnoise(vWorld.xz / 70.0) * 0.4;
 					// 赤・朱・橙・黄、ところどころ常緑樹
 					vec3 red = vec3(0.85, 0.06, 0.05);
@@ -292,6 +293,7 @@ export class Terrain {
 	update(playerPos) {
 		this.player.copy(playerPos);
 		if (!this.ready) return;
+		this.updateCoarse(playerPos);
 		let loading = 0;
 		for (const c of this.fine.values()) if (c.hiLoading) loading++;
 		const list = [...this.fine.values()]
@@ -335,6 +337,32 @@ export class Terrain {
 		const h = this.heightAt(_g.lat, _g.lon);
 		// 標高 h の点のワールド y (地球の丸みの分だけ補正)
 		return geoToWorld(_g.lat, _g.lon, h, _p).y;
+	}
+
+	// 遠景 (z12) のチャンクも、近くを飛ぶときは z15 の写真にする (鞍馬・貴船など)
+	updateCoarse(playerPos) {
+		for (const c of this.coarse.values()) {
+			// チャンクの端までの距離
+			const half = 4900;
+			const d = Math.max(0, Math.abs(c.center.x - playerPos.x) - half) + Math.max(0, Math.abs(c.center.z - playerPos.z) - half);
+			if (d < 1500 && !c.hiLevel && !c.hiLoading) {
+				c.hiLoading = true;
+				this.loadPhoto(c, COARSE_Z + 3).then((tex) => {
+					c.hiLoading = false;
+					c.hiTexture = tex;
+					c.hiLevel = COARSE_Z + 3;
+					c.mesh.material.map = tex;
+					c.mesh.material.color.set(0xffffff);
+					c.mesh.material.needsUpdate = true;
+				});
+			} else if (d > 4000 && c.hiLevel) {
+				c.hiTexture.dispose();
+				c.hiTexture = null;
+				c.hiLevel = 0;
+				c.mesh.material.map = c.baseTexture;
+				c.mesh.material.needsUpdate = true;
+			}
+		}
 	}
 
 	// 緯度経度における地表の標高(m)
