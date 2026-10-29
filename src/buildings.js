@@ -1,6 +1,7 @@
 // 軽量化した PLATEAU 建物データを読み込み、距離に応じて描画・当たり判定を行う
 import {
-	BufferGeometry, BufferAttribute, Mesh, MeshLambertMaterial, Group,
+	BufferGeometry, BufferAttribute, Mesh, MeshLambertMaterial, Group, InstancedMesh, Object3D, Color,
+	IcosahedronGeometry, CylinderGeometry,
 } from 'three';
 import { createAtlas } from './atlas.js';
 import { parseChunk } from './buildingMesh.js';
@@ -34,8 +35,17 @@ function createMaterial() {
 	return material;
 }
 
+// 街路樹 (イチョウ・モミジ・ケヤキの紅葉)
+const TREE_COLORS = [['#f5c61e', '#ffd84a', '#e8b10c'], ['#d8301c', '#ee5a24', '#c21f2c'], ['#d07a26', '#b85c1c', '#e0962e']];
+const crownGeom = new IcosahedronGeometry(2.4, 1).scale(1, 1.25, 1).translate(0, 5.2, 0);
+const trunkGeom = new CylinderGeometry(0.22, 0.3, 3.6, 6).translate(0, 1.8, 0);
+const crownMat = new MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+const trunkMat = new MeshLambertMaterial({ color: 0x5a3e2b });
+
 export class Buildings {
-	constructor(scene, baseUrl, { near = 1400 } = {}) {
+	constructor(scene, baseUrl, { near = 1400, era = 'now' } = {}) {
+		this.era = era;
+		this.landmarks = null; // setLandmarks されるまで建物を作らない
 		this.near = near; // これより近いチャンクは詳細表示 (m)
 		this.group = new Group();
 		this.group.name = 'buildings';
@@ -56,6 +66,12 @@ export class Buildings {
 	}
 
 	async init() {
+		this.treeUrl = this.baseUrl.replace(/buildings\/$/, 'trees/');
+		try {
+			this.treeIndex = new Set(await (await fetch(`${this.treeUrl}index.json`)).json());
+		} catch {
+			this.treeIndex = new Set();
+		}
 		const res = await fetch(`${this.baseUrl}index.json`);
 		const index = await res.json();
 		this.chunkSize = index.chunk;
@@ -74,7 +90,10 @@ export class Buildings {
 		this.busy++;
 		const id = ++this.jobId;
 		// バッファはワーカーに渡すとコピーされる (元はコリジョン用に残す)
-		this.worker.postMessage({ id, buffer: chunk.buffer.slice(0), ox: chunk.cx * this.chunkSize, oz: chunk.cz * this.chunkSize, detail });
+		const ox = chunk.cx * this.chunkSize, oz = chunk.cz * this.chunkSize, size = this.chunkSize;
+		// チャンクの近くの名所だけ渡す (隣のチャンクにはみ出した建物も見つけられるよう少し広めに)
+		const landmarks = this.landmarks.filter((l) => l.x > ox - 60 && l.x < ox + size + 60 && l.z > oz - 60 && l.z < oz + size + 60);
+		this.worker.postMessage({ id, buffer: chunk.buffer.slice(0), ox, oz, size, detail, landmarks, era: this.era });
 		this.jobs.set(id, (arrays) => {
 			this.busy--;
 			chunk.building = false;
@@ -116,6 +135,10 @@ export class Buildings {
 					}
 				}
 			});
+			if (this.treeIndex.has(`${chunk.cx}_${chunk.cz}`)) {
+				const tr = await fetch(`${this.treeUrl}${chunk.cx}_${chunk.cz}.bin`);
+				chunk.trees = await tr.arrayBuffer();
+			}
 		} catch (e) {
 			console.warn('building chunk', chunk.cx, chunk.cz, e);
 		}
@@ -123,6 +146,8 @@ export class Buildings {
 	}
 
 	release(chunk) {
+		this.removeTrees(chunk);
+		chunk.trees = null;
 		if (chunk.mesh) {
 			this.group.remove(chunk.mesh);
 			chunk.mesh.geometry.dispose();
@@ -134,8 +159,51 @@ export class Buildings {
 		chunk.grid = null;
 	}
 
+	// 名所の定義 (ワールド座標と、外形が無いとき用の地面の高さ y を含む)と、地面の高さを返す関数
+	setLandmarks(list, heightAtWorld) {
+		this.landmarks = list;
+		this.heightAtWorld = heightAtWorld;
+	}
+
+	buildTrees(chunk) {
+		const dv = new DataView(chunk.trees);
+		const n = dv.getUint32(4, true);
+		const crowns = new InstancedMesh(crownGeom, crownMat, n);
+		const trunks = new InstancedMesh(trunkGeom, trunkMat, n);
+		const o = new Object3D(), c = new Color();
+		for (let i = 0; i < n; i++) {
+			const x = chunk.cx * this.chunkSize + dv.getInt16(8 + i * 6, true) / 10;
+			const z = chunk.cz * this.chunkSize + dv.getInt16(10 + i * 6, true) / 10;
+			const kind = dv.getUint8(12 + i * 6) % 3;
+			const r = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1;
+			o.position.set(x, this.heightAtWorld(x, z) - 0.2, z);
+			o.rotation.y = r * 6.28;
+			o.scale.setScalar(0.8 + r * 0.5);
+			o.updateMatrix();
+			crowns.setMatrixAt(i, o.matrix);
+			trunks.setMatrixAt(i, o.matrix);
+			crowns.setColorAt(i, c.set(TREE_COLORS[kind][Math.floor(r * 3)]));
+		}
+		for (const m of [crowns, trunks]) {
+			m.castShadow = true;
+			m.receiveShadow = true;
+			m.computeBoundingSphere();
+			this.group.add(m);
+		}
+		chunk.treeMeshes = [crowns, trunks];
+	}
+
+	removeTrees(chunk) {
+		for (const m of chunk.treeMeshes ?? []) {
+			this.group.remove(m);
+			m.dispose();
+		}
+		chunk.treeMeshes = null;
+	}
+
 	// 毎フレーム: 近いチャンクから順に読み込み・詳細度を切り替える
 	update(pos) {
+		if (!this.landmarks) return;
 		const order = [...this.chunks.values()]
 			.map((c) => ({ c, d: Math.max(0, Math.hypot(c.x - pos.x, c.z - pos.z) - this.chunkSize * 0.5) }))
 			.sort((a, b) => a.d - b.d);
@@ -144,6 +212,8 @@ export class Buildings {
 				if (c.buffer || c.mesh) this.release(c);
 				continue;
 			}
+			if (d > FAR * 0.7) this.removeTrees(c);
+			else if (c.trees && !c.treeMeshes) this.buildTrees(c);
 			if (d > FAR) {
 				if (c.mesh) {
 					this.group.remove(c.mesh);
@@ -186,6 +256,8 @@ export class Buildings {
 		if (!ids) return false;
 		for (const i of ids) {
 			const b = c.list[i];
+			// 昭和初期モードでは戦後の高い建物は無い
+			if (this.era === 'showa' && (b.type === 5 || (b.type !== 2 && b.height > 14))) continue;
 			if (p.y > b.base + b.height + margin || p.y < b.base - 3) continue;
 			if (p.x < b.minX - margin || p.x > b.maxX + margin || p.z < b.minZ - margin || p.z > b.maxZ + margin) continue;
 			if (pointInRing(p.x, p.z, b.ring)) return true;

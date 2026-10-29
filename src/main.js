@@ -14,16 +14,27 @@ import { createSky } from './sky.js';
 import { Fireworks } from './fireworks.js';
 import { People } from './people.js';
 import { buildStage, STAGE, START_POINT } from './stage.js';
+import { Oni } from './oni.js';
+import { buildProps } from './props.js';
+import { LANDMARK_SPECS } from './landmarkSpecs.js';
 
 const $ = (id) => document.getElementById(id);
 const TURBO_SEC = 5; // ターボ1つぶんの噴射時間
-const START_TURBOS = 3;
+const START_TURBOS = 1;
 
 // ---------- 設定 ----------
 const settings = {
 	quality: localStorage.getItem('kiyomizu-quality') || (matchMedia('(pointer: coarse)').matches ? 'low' : 'high'),
 	muted: localStorage.getItem('kiyomizu-muted') === '1',
+	era: localStorage.getItem('kiyomizu-era') === 'showa' ? 'showa' : 'now',
 };
+$('opt-era').value = settings.era;
+$('opt-era').addEventListener('change', (e) => {
+	localStorage.setItem('kiyomizu-era', e.target.value);
+	location.reload();
+});
+const showaEra = settings.era === 'showa';
+if (showaEra) document.body.classList.add('showa');
 $('opt-quality').value = settings.quality;
 $('opt-mute').checked = settings.muted;
 $('opt-quality').addEventListener('change', (e) => {
@@ -103,12 +114,13 @@ addEventListener('resize', () => {
 });
 
 // ---------- ワールド ----------
-const terrain = new Terrain(scene);
+const terrain = new Terrain(scene, { era: settings.era });
 const glider = new Glider();
 scene.add(glider.object);
 const sound = new Sound();
 sound.setMuted(settings.muted);
 const fireworks = new Fireworks(scene);
+const oni = new Oni(scene);
 let buildings = null;
 let balloons = null;
 let thermals = null;
@@ -268,7 +280,7 @@ let flight = null;
 let titleTime = 0;
 
 function newFlight() {
-	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false };
+	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false, oniDist: Infinity, clear: false };
 }
 
 function placeOnStage() {
@@ -278,6 +290,7 @@ function placeOnStage() {
 	glider.jetFuel = START_TURBOS * TURBO_SEC;
 	glider.syncObject();
 	balloons.reset();
+	oni.reset();
 	flight = newFlight();
 	updateHud();
 }
@@ -294,7 +307,7 @@ function startGame() {
 	chaseInit = false;
 	wipePos.copy(glider.position);
 	sound.playSong('start');
-	showMessage('🎌 清水の舞台 🎌\nターボ ×3 で出発！', 2.6);
+	showMessage('🎌 清水の舞台 🎌\nターボ ×1 で出発！', 2.6);
 	$('hint').textContent = isTouch ? '画面をタップで飛び降りる！' : 'スペースキーで飛び降りる！';
 }
 
@@ -310,10 +323,12 @@ function jump() {
 	showMessage('とうっ！\n清水の舞台から\n飛び降りた！', 2);
 }
 
-function endGame(title, reason) {
+function endGame(title, reason, clear = false) {
 	state = 'over';
+	flight.clear = clear;
 	sound.stopSong(0.1);
-	sound.crash();
+	if (clear) sound.turboGet();
+	else sound.crash();
 	$('touch').classList.add('hidden');
 	const dist = flight.distance / 1000;
 	$('result-title').textContent = title;
@@ -325,7 +340,8 @@ function endGame(title, reason) {
 		? `通過: ${flight.checkpoints.join(' → ')}`
 		: 'アドバルーンは割れなかった…';
 	const rank = rankOf(flight.checkpoints.length, flight.distance);
-	const ranked = rank <= 10 && (flight.checkpoints.length > 0 || flight.distance > 50);
+	const ranked = clear || (rank <= 10 && (flight.checkpoints.length > 0 || flight.distance > 50));
+	$('result-title').classList.toggle('clear', clear);
 	$('rank-banner').classList.toggle('hidden', !ranked);
 	$('rank-no').textContent = rank;
 	$('result-name').value = localStorage.getItem('kiyomizu-name') || '';
@@ -336,7 +352,7 @@ function endGame(title, reason) {
 		if (state !== 'over') return;
 		showScreen('result');
 		if (ranked) {
-			// ランキング入り: お祝いのファンファーレと花火
+			// ランキング入り・全制覇: お祝いのファンファーレと花火
 			sound.playSong('ranking');
 			celebrate();
 		} else {
@@ -345,13 +361,13 @@ function endGame(title, reason) {
 	}, 1500);
 }
 
+// 画面の前方に花火を上げる (音も合わせる)
+function launchFireworks(n, big, gap) {
+	for (const t of fireworks.show(camera, n, big, gap)) sound.firework(t);
+}
+
 function celebrate() {
-	for (let i = 0; i < 5; i++) {
-		const a = Math.random() * Math.PI * 2;
-		const from = glider.position.clone().add(new Vector3(Math.cos(a) * 60, -10, Math.sin(a) * 60));
-		fireworks.launch(from, from.clone().add(new Vector3(0, 70 + Math.random() * 40, 0)), i * 0.5);
-		sound.firework(i * 0.5);
-	}
+	launchFireworks(8, true, 0.35);
 }
 
 function togglePause() {
@@ -484,6 +500,15 @@ function updateHud() {
 	$('turbo').classList.toggle('active', glider.jetting);
 	$('stall').classList.toggle('hidden', !(glider.stalled && state === 'flying'));
 
+	// 鬼との距離
+	const od = flight.oniDist;
+	$('oni').classList.toggle('hidden', !Number.isFinite(od));
+	if (Number.isFinite(od)) {
+		$('oni-dist').textContent = od >= 1000 ? `${(od / 1000).toFixed(1)}km` : `${od.toFixed(0)}m`;
+		$('oni').classList.toggle('danger', od < 150);
+	}
+	$('danger').style.opacity = Number.isFinite(od) && state === 'flying' ? Math.max(0, Math.min(1, (200 - od) / 160)) : 0;
+
 	const near = balloons.nearest(glider.position);
 	if (near) {
 		const p = near.item.group.position;
@@ -548,6 +573,19 @@ function drawMinimap() {
 		ctx.strokeStyle = '#fff';
 		ctx.stroke();
 	}
+	// 鬼
+	ctx.font = '28px sans-serif';
+	ctx.textAlign = 'center';
+	ctx.textBaseline = 'middle';
+	for (const o of oni.list) {
+		worldToGeo(o.pos, geo);
+		const p = toMap(geo.lat, geo.lon);
+		ctx.save();
+		ctx.translate(p.x, p.y);
+		ctx.rotate(glider.yaw);
+		ctx.fillText('👹', 0, 0);
+		ctx.restore();
+	}
 	ctx.restore();
 	// 自機
 	ctx.save();
@@ -606,16 +644,32 @@ function onPop(it) {
 	glider.addJet(TURBO_SEC);
 	sound.pop();
 	sound.turboGet();
-	// 地上から花火を3発
-	const p = it.group.position;
-	for (let i = 0; i < 3; i++) {
-		const a = Math.random() * Math.PI * 2;
-		const from = p.clone().add(new Vector3(Math.cos(a) * 30, -it.spot.agl, Math.sin(a) * 30));
-		const to = p.clone().add(new Vector3(Math.cos(a) * 25, 35 + i * 20, Math.sin(a) * 25));
-		fireworks.launch(from, to, i * 0.45);
-		sound.firework(i * 0.45);
+	launchFireworks(5, false, 0.3);
+	sound.cheer();
+	if (flight.checkpoints.length >= SPOTS.length) {
+		endGame('🏯 全制覇！ 🏯', '京都の名所をすべてめぐりました！ 鬼からも逃げ切った！', true);
+		return;
 	}
 	showMessage(`🎆 チェックポイント！ 🎆\n${it.spot.name}\nターボ +1 🚀`, 2.6);
+}
+
+// 鬼ごっこ: 鬼の動きと、近づいたときの演出
+let heartTimer = 0;
+function updateOni(dt, active) {
+	const r = oni.update(dt, glider, active);
+	if (!active) return;
+	if (r.spawned) {
+		sound.oniLaugh();
+		showMessage(oni.list.length === 1 ? '👹 鬼が来た！\n逃げろ〜！' : `👹 鬼が増えた！ (${oni.list.length}匹)`, 2.2);
+	}
+	flight.oniDist = r.nearest;
+	// 近いほど速くなる心臓の音
+	heartTimer -= dt;
+	if (r.nearest < 180 && heartTimer <= 0) {
+		sound.heartbeat();
+		heartTimer = 0.35 + (r.nearest / 180) * 0.8;
+	}
+	if (r.caught) endGame('つかまった！', '鬼に捕まってしまいました… 👹');
 }
 
 // ---------- メインループ ----------
@@ -673,7 +727,8 @@ function loop(now) {
 		flight.inThermal = inThermal;
 
 		for (const it of balloons.update(dt, time, glider.position)) onPop(it);
-		const hit = checkCollision(prev);
+		updateOni(dt, true);
+		const hit = state === 'flying' && checkCollision(prev);
 		if (hit) endGame(hit.title, hit.reason);
 		updateCamera(dt);
 	} else if (state === 'over') {
@@ -681,6 +736,7 @@ function loop(now) {
 	}
 
 	if (state !== 'flying' && balloons) balloons.update(dt, time, new Vector3(1e9, 0, 0));
+	if (state !== 'flying') updateOni(dt, false);
 	if (thermals) thermals.update(time);
 	fireworks.update(dt);
 	const focus = state === 'title' || state === 'loading' ? startPos : glider.position;
@@ -733,12 +789,18 @@ function loop(now) {
 // ---------- 起動 ----------
 async function init() {
 	requestAnimationFrame(loop);
-	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1400 : 900 });
+	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1400 : 900, era: settings.era });
 	await buildings.init();
 	await terrain.init((p) => {
 		$('load-fill').style.width = `${(p * 85).toFixed(0)}%`;
 	});
 	buildStage(scene, (x, z) => terrain.heightAtWorld(x, z));
+	// 名所の建物 (外形が無いときに建てる地面の高さも渡す)。昭和初期には京都タワーは無い
+	buildings.setLandmarks(LANDMARK_SPECS.filter((l) => !(showaEra && l.kind === 'tower')).map((l) => {
+		const p = geoToWorld(l.lat, l.lon, 0);
+		return { ...l, x: p.x, z: p.z, y: terrain.heightAtWorld(p.x, p.z) };
+	}), (x, z) => terrain.heightAtWorld(x, z));
+	buildProps(scene, (x, z) => terrain.heightAtWorld(x, z));
 
 	balloons = new Balloons(scene, SPOTS, terrain);
 	thermals = new Thermals(scene, THERMALS, terrain);

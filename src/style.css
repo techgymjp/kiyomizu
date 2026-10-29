@@ -425,3 +425,30 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	.score .v { font-size: 18px; }
 	#hint { font-size: 18px; }
 }
+
+/* ---------- 鬼ごっこ ---------- */
+#oni {
+	position: absolute;
+	top: 70px;
+	left: 50%;
+	transform: translateX(-50%);
+	font-size: 15px;
+	padding: 4px 14px;
+	color: #8a1c1c;
+}
+#oni.danger { background: var(--red); color: #fff; animation: blink 0.4s infinite alternate; }
+#danger {
+	position: absolute;
+	inset: 0;
+	opacity: 0;
+	background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0) 55%, rgba(255, 30, 30, 0.55) 100%);
+	transition: opacity 0.2s;
+}
+#result-title.clear { color: var(--orange); font-size: 40px; }
+
+/* ---------- 昭和初期: 古い写真のようなセピア調 ---------- */
+body.showa #view { filter: sepia(0.7) contrast(1.08) brightness(1.02) saturate(0.85); }
+
+@media (max-width: 720px) {
+	#oni { top: 52px; font-size: 12px; }
+}

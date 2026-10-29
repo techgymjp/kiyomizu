@@ -125,7 +125,7 @@ const cells = [
 		noise(c, 0, 0, S, S, 0.12, 19);
 	},
 	// 7: 瓦 (いぶし銀)
-	(c) => kawara(c, '#5b6068', '#3e434b', 23),
+	(c) => kawara(c, '#b3b8c0', '#868c96', 23),
 	// 8: 陸屋根 (コンクリート)
 	(c) => {
 		c.fillStyle = '#b9b8b3';
@@ -165,6 +165,47 @@ const cells = [
 		c.strokeStyle = 'rgba(0,0,0,0.08)';
 		c.lineWidth = 3;
 		c.strokeRect(0, 0, S, S);
+	},
+	// 13: 金箔 (金閣)
+	(c) => {
+		const g = c.createLinearGradient(0, 0, S, S);
+		g.addColorStop(0, '#f7d774');
+		g.addColorStop(0.45, '#fff2b0');
+		g.addColorStop(0.55, '#e0b23c');
+		g.addColorStop(1, '#c8962a');
+		c.fillStyle = g;
+		c.fillRect(0, 0, S, S);
+		c.fillStyle = 'rgba(120,80,10,0.35)';
+		c.fillRect(0, 0, 14, S);
+		c.fillRect(S - 14, 0, 14, S);
+		c.fillRect(0, S - 16, S, 16);
+		c.fillStyle = 'rgba(90,60,10,0.25)';
+		c.fillRect(60, 70, 136, 110);
+	},
+	// 14: 神社の朱塗りの柱と白壁
+	(c) => {
+		c.fillStyle = '#fbf6ec';
+		c.fillRect(0, 0, S, S);
+		c.fillStyle = '#e8432c';
+		c.fillRect(0, 0, 30, S);
+		c.fillRect(S - 30, 0, 30, S);
+		c.fillRect(0, 30, S, 20);
+		c.fillRect(0, 160, S, 18);
+		c.fillStyle = '#f2c230';
+		c.fillRect(0, 50, S, 6);
+		c.fillStyle = '#b52a1c';
+		c.fillRect(0, S - 18, S, 18);
+		noise(c, 0, 0, S, S, 0.08, 43);
+	},
+	// 15: 檜皮葺 (茶色の屋根)
+	(c) => {
+		c.fillStyle = '#7a4a2a';
+		c.fillRect(0, 0, S, S);
+		for (let y = 0; y < S; y += 10) {
+			c.fillStyle = y % 20 ? 'rgba(0,0,0,0.18)' : 'rgba(255,220,180,0.12)';
+			c.fillRect(0, y, S, 5);
+		}
+		noise(c, 0, 0, S, S, 0.2, 47);
 	},
 ];
 

@@ -35,6 +35,8 @@
 			</div>
 		</div>
 		<div id="wipe"><span class="wipe-label">● 前方カメラ</span></div>
+		<div id="oni" class="pill hidden">👹 鬼まで <span id="oni-dist">-</span></div>
+		<div id="danger"></div>
 		<div id="turbo" class="pill">
 			<div class="turbo-head"><span class="turbo-title">🚀 ターボ</span><span id="turbo-count">×0</span><small>Space / Shift で噴射</small></div>
 			<div class="turbo-bar"><div id="turbo-fill"></div></div>
@@ -61,7 +63,7 @@
 				<span class="l1">清水の舞台から</span>
 				<span class="l2"><b>飛</b><b>び</b><b>降</b><b>り</b><b>る</b><b>つ</b><b>も</b><b>り</b></span>
 			</h1>
-			<p class="lead">ハングライダーで清水の舞台からダイブ！<br />紅葉まっさかりの京都の空を飛びまわって、<br />名所のアドバルーンを割りまくろう 🎈</p>
+			<p class="lead">ハングライダーで清水の舞台からダイブ！<br />紅葉まっさかりの京都の空で<b>鬼ごっこ</b> 👹<br />鬼から逃げながら、名所のアドバルーンを全部割れ！🎈</p>
 			<div id="loading">
 				<div class="bar"><div id="load-fill"></div></div>
 				<div id="load-text">京都の地形を読み込み中…</div>
@@ -80,6 +82,12 @@
 						<option value="low">かるい (影なし)</option>
 					</select>
 				</label>
+				<label>時代
+					<select id="opt-era">
+						<option value="now">現代</option>
+						<option value="showa">昭和初期</option>
+					</select>
+				</label>
 				<label><input type="checkbox" id="opt-mute" /> 音を消す</label>
 			</div>
 			<p class="credit-line">
@@ -93,10 +101,11 @@
 		<div class="card">
 			<h2>❓ 遊び方</h2>
 			<ul class="howto">
-				<li><span class="key">🎯</span>名所のアドバルーンを割ってチェックポイント通過！ 割ると花火があがって<b>ターボ +1</b>。</li>
+				<li><span class="key">👹</span><b>鬼ごっこ</b>！ 空飛ぶ鬼が追いかけてくる。捕まったら負け。時間がたつと鬼は増えて速くなる</li>
+				<li><span class="key">🎯</span>名所のアドバルーンを割ってチェックポイント通過！ 花火があがって<b>ターボ +1</b>。全部割ったらクリア</li>
 				<li><span class="key">↑ ↓</span>↑で上昇、↓で下降（スピードアップ）</li>
 				<li><span class="key">← →</span>左右に旋回</li>
-				<li><span class="key">Space</span>ターボ噴射（押している間だけ）。最初から<b>3つ</b>持っています</li>
+				<li><span class="key">Space</span>ターボ噴射（押している間だけ）。最初は<b>1つ</b>。アドバルーンで増えます</li>
 				<li><span class="key">C</span>視点切替（後ろから ⇔ パイロット目線）</li>
 				<li><span class="key">M / P</span>音のON/OFF ／ 一時停止</li>
 				<li><span class="key">✨</span>光の粒が昇る場所は<b>上昇気流</b>。中で旋回すると高度アップ</li>

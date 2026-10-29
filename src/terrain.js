@@ -7,7 +7,11 @@ import { geoToWorld, worldToGeo, lonToTileX, latToTileY, tileXToLon, tileYToLat 
 import { loadImage } from './loader.js';
 
 const DEM_URL = (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/dem_png/${z}/${x}/${y}.png`;
-const PHOTO_URL = (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${z}/${x}/${y}.jpg`;
+// 空中写真: 現代 (全国最新写真) と、昭和 (1945〜50年頃に米軍が撮影したもの)
+const PHOTOS = {
+	now: (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${z}/${x}/${y}.jpg`,
+	showa: (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/ort_USA10/${z}/${x}/${y}.png`,
+};
 
 // 京都市街を覆う z12 タイル範囲 (この内側を z14 の詳細地形で埋める)
 const Z12_X = [3591, 3593];
@@ -110,7 +114,8 @@ class Chunk {
 }
 
 export class Terrain {
-	constructor(scene) {
+	constructor(scene, { era = 'now' } = {}) {
+		this.photoUrl = PHOTOS[era] ?? PHOTOS.now;
 		this.group = new Group();
 		this.group.name = 'terrain';
 		scene.add(this.group);
@@ -258,10 +263,12 @@ export class Terrain {
 		const canvas = document.createElement('canvas');
 		canvas.width = canvas.height = 256 * n;
 		const ctx = canvas.getContext('2d');
+		ctx.fillStyle = '#8f8c80'; // 写真が無い所
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
 		const jobs = [];
 		for (let dx = 0; dx < n; dx++) {
 			for (let dy = 0; dy < n; dy++) {
-				jobs.push(loadImage(PHOTO_URL(tz, chunk.x * n + dx, chunk.y * n + dy), prio)
+				jobs.push(loadImage(this.photoUrl(tz, chunk.x * n + dx, chunk.y * n + dy), prio)
 					.then((bmp) => {
 						ctx.drawImage(bmp, dx * 256, dy * 256);
 						bmp.close();

@@ -14,61 +14,64 @@ function seq(str) {
 	});
 }
 
-// ---------- 曲 ----------
-// 陽音階 (D E G A B) を中心にした和風ポップ
+// ---------- 曲 (雅楽風) ----------
+// 平調 (E F# A B C# D) を中心に、笙・篳篥・龍笛・鞨鼓・太鼓・鉦鼓で演奏する
+// 打楽器: T=太鼓 K=鞨鼓 R=鞨鼓の連打(来) G=鉦鼓
+// 笙は和音名 (SHO_CHORDS) で指定
+const SHO_CHORDS = {
+	E: ['E5', 'F#5', 'B5', 'E6', 'F#6'],
+	A: ['A4', 'B4', 'E5', 'A5', 'B5'],
+	B: ['B4', 'C#5', 'F#5', 'B5', 'E6'],
+	D: ['D5', 'E5', 'A5', 'D6'],
+};
 const SONGS = {
 	title: {
-		bpm: 96, loop: true,
+		bpm: 60, loop: true,
 		tracks: [
-			{ wave: 'triangle', gain: 0.22, notes: seq('D5:1 E5:.5 G5:.5 A5:1 G5:1 E5:1 D5:.5 E5:.5 G5:2 A5:1 B5:.5 A5:.5 G5:1 E5:1 D5:1 E5:1 D5:2') },
-			{ wave: 'sine', gain: 0.2, notes: seq('D3:2 A3:2 G3:2 D3:2 G3:2 E3:2 A3:2 D3:2') },
-			{ wave: 'pluck', gain: 0.12, notes: seq('A4:.5 D5:.5 A4:.5 D5:.5 '.repeat(8)) },
+			{ wave: 'sho', gain: 0.05, notes: seq('E:8 A:8 B:8 E:8') },
+			{ wave: 'hichiriki', gain: 0.11, notes: seq('E4:2 F#4:1 A4:1 B4:4 A4:2 B4:1 C#5:1 B4:4 A4:2 F#4:2 E4:4 F#4:2 A4:2 B4:4') },
+			{ wave: 'ryuteki', gain: 0.05, notes: seq('-:.25 E5:1.75 F#5:1 A5:1 B5:4 A5:2 B5:1 C#6:1 B5:4 A5:2 F#5:2 E5:4 F#5:2 A5:2 B5:4') },
+			{ wave: 'perc', gain: 0.5, notes: seq('T:4 K:2 K:2 R:4 T:4 G:2 K:2 R:4 T:4 G:4') },
 		],
 	},
 	start: {
-		bpm: 150, loop: false,
+		bpm: 100, loop: false,
 		tracks: [
-			{ wave: 'square', gain: 0.16, notes: seq('G4:.5 G4:.5 G4:.5 D5:1.5 -:.5 B4:.5 D5:.5 G5:3') },
-			{ wave: 'triangle', gain: 0.25, notes: seq('G2:1 D3:1 G2:1 D3:1 G2:3') },
-			{ wave: 'drum', gain: 0.35, notes: seq('K:1 S:1 K:1 S:.5 S:.5 K:3') },
+			{ wave: 'sho', gain: 0.06, notes: seq('E:12') },
+			{ wave: 'ryuteki', gain: 0.08, notes: seq('E5:1 F#5:1 A5:2 B5:2 -:1 E6:5') },
+			{ wave: 'perc', gain: 0.6, notes: seq('T:2 G:1 T:1 R:2 T:2 G:1 G:1 T:2') },
 		],
 	},
 	flight: {
-		bpm: 138, loop: true,
+		bpm: 108, loop: true,
 		tracks: [
-			{ wave: 'square', gain: 0.1, notes: seq(
-				'D5:.5 E5:.5 G5:1 A5:.5 G5:.5 E5:1 D5:.5 E5:.5 G5:.5 A5:.5 B5:2 '
-				+ 'A5:.5 B5:.5 D6:1 B5:.5 A5:.5 G5:1 A5:.5 G5:.5 E5:.5 D5:.5 E5:2 '
-				+ 'D5:.5 E5:.5 G5:1 A5:.5 G5:.5 E5:1 G5:.5 A5:.5 B5:.5 D6:.5 E6:2 '
-				+ 'D6:.5 B5:.5 A5:1 G5:.5 E5:.5 D5:1 E5:.5 G5:.5 A5:.5 E5:.5 D5:2',
+			{ wave: 'sho', gain: 0.045, notes: seq('B:8 A:8 E:8 B:8') },
+			{ wave: 'hichiriki', gain: 0.1, notes: seq(
+				'B4:1 A4:.5 B4:.5 C#5:1 E5:1 D5:1 C#5:1 B4:2 A4:1 B4:.5 A4:.5 F#4:1 A4:1 B4:4 '
+				+ 'E5:1 F#5:1 E5:1 D5:1 C#5:2 B4:2 A4:1 B4:1 C#5:1 A4:1 B4:4',
 			) },
-			{ wave: 'triangle', gain: 0.28, notes: seq(
-				('D3:.5 D3:.5 A3:.5 D3:.5 G2:.5 G2:.5 D3:.5 G2:.5 '.repeat(2)
-				+ 'C3:.5 C3:.5 G3:.5 C3:.5 D3:.5 D3:.5 A3:.5 D3:.5 '.repeat(2)).repeat(2),
+			{ wave: 'ryuteki', gain: 0.045, notes: seq(
+				'-:.25 B5:.75 A5:.5 B5:.5 C#6:1 E6:1 D6:1 C#6:1 B5:2 A5:1 B5:.5 A5:.5 F#5:1 A5:1 B5:4 '
+				+ 'E6:1 F#6:1 E6:1 D6:1 C#6:2 B5:2 A5:1 B5:1 C#6:1 A5:1 B5:4',
 			) },
-			{ wave: 'pluck', gain: 0.08, notes: seq(
-				('F#4:.5 A4:.5 D5:.5 A4:.5 G4:.5 B4:.5 D5:.5 B4:.5 '.repeat(2)
-				+ 'G4:.5 C5:.5 E5:.5 C5:.5 F#4:.5 A4:.5 D5:.5 A4:.5 '.repeat(2)).repeat(2),
-			) },
-			{ wave: 'drum', gain: 0.3, notes: seq('K:.5 H:.5 S:.5 H:.5 K:.5 K:.5 S:.5 H:.5 '.repeat(8)) },
+			{ wave: 'perc', gain: 0.5, notes: seq('T:1 K:.5 K:.5 G:1 K:1 R:2 K:1 G:1 '.repeat(4)) },
 		],
 	},
 	gameover: {
-		bpm: 84, loop: false,
+		bpm: 60, loop: false,
 		tracks: [
-			{ wave: 'triangle', gain: 0.25, notes: seq('A5:.5 G5:.5 E5:.5 D5:.5 C5:1 A4:.5 B4:.5 C5:.5 B4:.5 A4:3') },
-			{ wave: 'sine', gain: 0.25, notes: seq('A3:2 F3:2 E3:2 A2:3') },
+			{ wave: 'sho', gain: 0.05, notes: seq('A:6 E:6') },
+			{ wave: 'ryuteki', gain: 0.07, notes: seq('B5:2 A5:1 F#5:1 E5:4 -:1 F#4:3') },
+			{ wave: 'perc', gain: 0.6, notes: seq('T:4 G:4 T:4') },
 		],
 	},
 	ranking: {
-		bpm: 160, loop: false,
+		bpm: 132, loop: false,
 		tracks: [
-			{ wave: 'square', gain: 0.14, notes: seq(
-				'C5:.5 E5:.5 G5:.5 C6:1 G5:.5 C6:1.5 -:.5 A5:.5 B5:.5 C6:.5 D6:.5 E6:.5 D6:.5 C6:.5 D6:.5 E6:1 G6:3',
-			) },
-			{ wave: 'triangle', gain: 0.22, notes: seq('C3:1 G3:1 C3:1 G3:1 F3:1 G3:1 A3:1 B3:1 C4:1 G3:1 C4:3') },
-			{ wave: 'pluck', gain: 0.12, notes: seq('E5:.5 G5:.5 '.repeat(8) + 'E5:.5 G5:.5 C6:3') },
-			{ wave: 'drum', gain: 0.32, notes: seq('K:1 S:1 K:1 S:1 K:.5 K:.5 S:1 K:.5 S:.5 S:.5 S:.5 K:1 S:.5 S:.5 K:3') },
+			{ wave: 'sho', gain: 0.06, notes: seq('E:8 A:8 E:8') },
+			{ wave: 'hichiriki', gain: 0.09, notes: seq('E4:2 A4:2 B4:4 C#5:2 B4:2 E5:4 B4:4 E5:4') },
+			{ wave: 'ryuteki', gain: 0.07, notes: seq('E5:.5 F#5:.5 A5:1 B5:1 E6:1 B5:.5 E6:.5 F#6:2 E6:2 B5:1 C#6:1 E6:2 F#6:4 E6:3 -:4') },
+			{ wave: 'perc', gain: 0.6, notes: seq('R:2 T:1 G:1 R:2 T:1 G:1 T:1 K:.5 K:.5 T:1 K:.5 K:.5 R:4 T:2 G:2 T:2 G:2') },
 		],
 	},
 };
@@ -208,31 +211,119 @@ export class Sound {
 	}
 
 	playNote(wave, n, t, dur, gain, bus) {
-		if (wave === 'drum') {
-			if (n === 'K') this.tone(140, t, 0.25, { slideTo: 45, gain: gain * 2.2, bus });
-			else if (n === 'S') this.burstNoise(t, 0.2, { type: 'bandpass', f: 2200, gain: gain * 1.2, decay: 0.04, bus });
-			else this.burstNoise(t, 0.06, { type: 'highpass', f: 7000, gain: gain * 0.6, decay: 0.015, bus });
-			return;
+		switch (wave) {
+			case 'perc': return this.percussion(n, t, gain, bus);
+			case 'sho': return this.sho(SHO_CHORDS[n], t, dur, gain, bus);
+			case 'hichiriki': return this.reed(freq(n), t, dur, gain, bus);
+			case 'ryuteki': return this.flute(freq(n), t, dur, gain, bus);
 		}
-		const f = freq(n);
-		if (wave === 'pluck') {
-			this.tone(f, t, Math.min(0.6, dur * 1.5), { wave: 'triangle', gain, attack: 0.002, bus });
-			this.tone(f * 2, t, 0.12, { wave: 'sine', gain: gain * 0.4, attack: 0.002, bus });
-			return;
+	}
+
+	// 笙: 和音をゆっくり膨らませて伸ばす
+	sho(notes, t, dur, gain, bus) {
+		const ctx = this.ctx;
+		const g = ctx.createGain();
+		const end = t + dur;
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.linearRampToValueAtTime(gain, t + Math.min(1.2, dur * 0.35));
+		g.gain.setValueAtTime(gain, Math.max(t + 0.05, end - 0.4));
+		g.gain.linearRampToValueAtTime(0.0001, end);
+		const lp = ctx.createBiquadFilter();
+		lp.type = 'lowpass';
+		lp.frequency.value = 3200;
+		g.connect(lp).connect(bus);
+		for (const name of notes) {
+			const f = freq(name);
+			for (const [type, mul, det] of [['triangle', 1, -4], ['sine', 2, 3]]) {
+				const o = ctx.createOscillator();
+				o.type = type;
+				o.frequency.value = f * mul;
+				o.detune.value = det;
+				const og = ctx.createGain();
+				og.gain.value = mul === 1 ? 1 : 0.3;
+				o.connect(og).connect(g);
+				o.start(t);
+				o.stop(end + 0.05);
+			}
 		}
+	}
+
+	// 篳篥: 鼻にかかったリード音。下からずり上げて入る (塩梅)
+	reed(f, t, dur, gain, bus) {
 		const ctx = this.ctx;
 		const o = ctx.createOscillator();
-		o.type = wave;
-		o.frequency.value = f;
+		o.type = 'sawtooth';
+		o.frequency.setValueAtTime(f * 0.92, t);
+		o.frequency.exponentialRampToValueAtTime(f, t + Math.min(0.25, dur * 0.4));
+		const vib = ctx.createOscillator();
+		vib.frequency.value = 5;
+		const vg = ctx.createGain();
+		vg.gain.setValueAtTime(0, t);
+		vg.gain.linearRampToValueAtTime(f * 0.012, t + dur);
+		vib.connect(vg).connect(o.frequency);
+		const bp = ctx.createBiquadFilter();
+		bp.type = 'bandpass';
+		bp.frequency.value = 1300;
+		bp.Q.value = 1.4;
+		const lp = ctx.createBiquadFilter();
+		lp.type = 'lowpass';
+		lp.frequency.value = 2600;
 		const g = ctx.createGain();
-		const end = t + dur * 0.92;
-		g.gain.setValueAtTime(0, t);
-		g.gain.linearRampToValueAtTime(gain, t + 0.015);
-		g.gain.setValueAtTime(gain * 0.8, Math.max(t + 0.02, end - 0.05));
-		g.gain.linearRampToValueAtTime(0, end);
+		const end = t + dur * 0.97;
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.linearRampToValueAtTime(gain, t + 0.08);
+		g.gain.linearRampToValueAtTime(gain * 1.25, t + dur * 0.6);
+		g.gain.linearRampToValueAtTime(0.0001, end);
+		o.connect(bp).connect(lp).connect(g).connect(bus);
+		o.start(t);
+		vib.start(t);
+		o.stop(end + 0.05);
+		vib.stop(end + 0.05);
+	}
+
+	// 龍笛: 息の混じった笛。少し上から落として入る
+	flute(f, t, dur, gain, bus) {
+		const ctx = this.ctx;
+		const o = ctx.createOscillator();
+		o.type = 'sine';
+		o.frequency.setValueAtTime(f * 1.03, t);
+		o.frequency.exponentialRampToValueAtTime(f, t + 0.12);
+		const g = ctx.createGain();
+		const end = t + dur * 0.95;
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.linearRampToValueAtTime(gain, t + 0.06);
+		g.gain.setValueAtTime(gain, Math.max(t + 0.07, end - 0.1));
+		g.gain.linearRampToValueAtTime(0.0001, end);
 		o.connect(g).connect(bus);
 		o.start(t);
-		o.stop(end + 0.02);
+		o.stop(end + 0.05);
+		// 息の音
+		this.burstNoise(t, dur, { type: 'bandpass', f, q: 8, gain: gain * 0.9, decay: dur * 0.5, bus });
+	}
+
+	// 打楽器
+	percussion(n, t, gain, bus) {
+		if (n === 'T') {
+			// 太鼓: 低く長い響き
+			this.tone(75, t, 1.4, { slideTo: 42, gain: gain * 1.6, bus });
+			this.burstNoise(t, 0.3, { f: 300, gain: gain * 0.5, decay: 0.05, bus });
+		} else if (n === 'K') {
+			// 鞨鼓: 乾いた高い音
+			this.tone(520, t, 0.12, { slideTo: 380, gain: gain * 0.5, bus });
+			this.burstNoise(t, 0.06, { type: 'bandpass', f: 1800, gain: gain * 0.4, decay: 0.015, bus });
+		} else if (n === 'R') {
+			// 鞨鼓の連打: だんだん速く
+			let x = t;
+			for (let i = 0, gap = 0.16; i < 9; i++, gap *= 0.82) {
+				this.tone(520, x, 0.08, { slideTo: 400, gain: gain * 0.35, bus });
+				x += gap;
+			}
+		} else if (n === 'G') {
+			// 鉦鼓: 金属的な響き
+			this.tone(2150, t, 0.5, { gain: gain * 0.18, bus });
+			this.tone(3370, t, 0.35, { gain: gain * 0.1, bus });
+			this.tone(1280, t, 0.6, { gain: gain * 0.08, bus });
+		}
 	}
 
 	stopSong(fade = 0.3) {
@@ -330,6 +421,26 @@ export class Sound {
 		this.burstNoise(t + 0.15, 0.6, { type: 'bandpass', f: 1800, gain: 0.4, decay: 0.08 });
 		// ぴよぴよ
 		for (let i = 0; i < 4; i++) this.tone(1500 + (i % 2) * 300, t + 0.6 + i * 0.14, 0.12, { wave: 'sine', gain: 0.08 });
+	}
+
+	// 鬼の笑い声「ガッハッハ」
+	oniLaugh() {
+		if (!this.ctx) return;
+		const t = this.ctx.currentTime;
+		for (let i = 0; i < 4; i++) {
+			const at = t + i * 0.22;
+			this.tone(150 - i * 8, at, 0.18, { wave: 'sawtooth', slideTo: 95, gain: 0.22, attack: 0.01 });
+			this.burstNoise(at, 0.15, { type: 'bandpass', f: 700, gain: 0.3, decay: 0.05, q: 2 });
+		}
+		this.tone(70, t, 1.2, { slideTo: 40, gain: 0.5 });
+	}
+
+	// 鬼が近いときの心臓の音 (ドクン)
+	heartbeat() {
+		if (!this.ctx) return;
+		const t = this.ctx.currentTime;
+		this.tone(60, t, 0.18, { slideTo: 40, gain: 0.6 });
+		this.tone(55, t + 0.16, 0.2, { slideTo: 38, gain: 0.45 });
 	}
 
 	countdown(final = false) {
