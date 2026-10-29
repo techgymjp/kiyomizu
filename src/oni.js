@@ -173,7 +173,7 @@ function buildOni(color) {
 const COLORS = [0xd83a2e, 0x2f5fd8, 0x2fa84f, 0x8a3fd8, 0xf0a020, 0x222222];
 
 const DETECT = 450; // この距離にプレイヤーが入ると見つかる (m)
-const LOSE = 900; // これより離れると見失う
+const LOSE = 600; // これより離れると見失う
 const WANDER_SPEED = 6;
 const WANDER_RADIUS = 450; // 持ち場のまわりをうろつく範囲
 const SAFE_START = 600; // スタート地点のこの範囲には置かない
