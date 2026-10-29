@@ -1,6 +1,7 @@
 import {
 	WebGLRenderer, Scene, PerspectiveCamera, HemisphereLight, DirectionalLight, Fog, Color,
 	Vector3, MathUtils, ACESFilmicToneMapping, SRGBColorSpace, PCFSoftShadowMap,
+	WebGLRenderTarget, OrthographicCamera, Mesh, PlaneGeometry, MeshBasicMaterial,
 } from 'three';
 import { Terrain } from './terrain.js';
 import { Buildings } from './buildings.js';
@@ -26,7 +27,8 @@ const SHARE_URL = 'https://techgym.jp/column/claude-code-game-kiyomizu/';
 
 // ---------- 設定 ----------
 const settings = {
-	quality: localStorage.getItem('kiyomizu-quality') || (matchMedia('(pointer: coarse)').matches ? 'low' : 'high'),
+	// 初期設定は「かるい (影なし)」。以前の「きれい」の保存値は引き継がない (保存名を変更)
+	quality: localStorage.getItem('kiyomizu-quality2') === 'high' ? 'high' : 'low',
 	muted: localStorage.getItem('kiyomizu-muted') === '1',
 	era: localStorage.getItem('kiyomizu-era') === 'showa' ? 'showa' : 'now',
 };
@@ -40,7 +42,7 @@ if (showaEra) document.body.classList.add('showa');
 $('opt-quality').value = settings.quality;
 $('opt-mute').checked = settings.muted;
 $('opt-quality').addEventListener('change', (e) => {
-	localStorage.setItem('kiyomizu-quality', e.target.value);
+	localStorage.setItem('kiyomizu-quality2', e.target.value);
 	location.reload();
 });
 $('opt-mute').addEventListener('change', (e) => {
@@ -68,7 +70,13 @@ const scene = new Scene();
 scene.fog = new Fog(new Color(0xa9d4f5), 6000, 32000);
 
 const camera = new PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 60000);
-const wipeCamera = new PerspectiveCamera(55, 16 / 10, 0.1, 60000);
+// ワイプは遠くまで描く必要がないので描画距離を短くする
+const wipeCamera = new PerspectiveCamera(55, 16 / 10, 0.5, 3500);
+// ワイプは低い解像度で別の画像に描き、それを画面に貼る (1フレームおきに更新して軽くする)
+const wipeTarget = new WebGLRenderTarget(320, 200);
+const overlayScene = new Scene();
+const overlayCamera = new OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0, 1);
+overlayScene.add(new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ map: wipeTarget.texture, depthTest: false, depthWrite: false })));
 
 const sun = new Vector3().setFromSphericalCoords(1, MathUtils.degToRad(50), MathUtils.degToRad(320));
 const sky = createSky(sun);
@@ -106,6 +114,8 @@ function measureWipe() {
 	if (wipeRect) {
 		wipeCamera.aspect = wipeRect.w / wipeRect.h;
 		wipeCamera.updateProjectionMatrix();
+		// 画面上の大きさの 0.75 倍の解像度で十分
+		wipeTarget.setSize(Math.round(wipeRect.w * 0.75), Math.round(wipeRect.h * 0.75));
 	}
 }
 addEventListener('resize', () => {
@@ -699,9 +709,19 @@ const prev = new Vector3();
 
 let frames = 0;
 const debug = { cam: null };
+// 処理ごとの所要時間 (ミリ秒、移動平均)。開発用
+const prof = {};
+let profT = 0;
+function mark(name) {
+	const t = performance.now();
+	prof[name] = (prof[name] ?? 0) * 0.95 + (t - profT) * 0.05;
+	profT = t;
+}
+
 function loop(now) {
 	requestAnimationFrame(loop);
 	frames++;
+	profT = performance.now();
 	const dt = Math.min(0.05, (now - last) / 1000);
 	last = now;
 	const time = now / 1000;
@@ -754,12 +774,16 @@ function loop(now) {
 		updateCamera(dt);
 	}
 
+	mark('sim');
 	if (state !== 'flying' && balloons) balloons.update(dt, time, new Vector3(1e9, 0, 0));
 	if (state !== 'flying') updateOni(dt, false);
+	mark('oni');
 	if (thermals) thermals.update(time);
 	fireworks.update(dt);
+	mark('fx');
 	const focus = debug.cam ? debug.cam.pos : state === 'title' || state === 'loading' ? startPos : glider.position;
 	if (people && people.update(dt, time, focus) && state === 'flying') sound.cheer();
+	mark('people');
 	sound.update(dt, {
 		speed: glider.speed, jetting: glider.jetting, active: state === 'flying',
 		vario, agl: hudAgl, stalled: glider.stalled,
@@ -770,7 +794,9 @@ function loop(now) {
 		terrainTimer = 0.5;
 		terrain.update(focus);
 	}
+	mark('terrain');
 	if (buildings) buildings.update(focus);
+	mark('buildings');
 	if (shadows) updateSun(focus);
 
 	if (balloons && (state === 'flying' || state === 'ready')) {
@@ -782,33 +808,39 @@ function loop(now) {
 		}
 	}
 
+	mark('hud');
 	// 描画: メイン → ワイプ
 	sky.position.copy(camera.position);
-	renderer.shadowMap.needsUpdate = shadows;
+	// 影は1フレームおきに更新する (太陽は動かず、ずれはわずか)
+	renderer.shadowMap.needsUpdate = shadows && frames % 2 === 0;
 	renderer.setScissorTest(false);
 	renderer.setViewport(0, 0, innerWidth, innerHeight);
 	renderer.clear();
 	setPilotVisible(cameraMode !== 'pilot' || state === 'title');
 	renderer.render(scene, camera);
+	mark('render');
 	const showWipe = (state === 'ready' || state === 'flying' || state === 'over') && wipeRect && !debug.cam;
 	if (showWipe) {
-		setPilotVisible(true);
-		sky.position.copy(wipeCamera.position);
+		if (frames % 2 === 1) {
+			setPilotVisible(true);
+			sky.position.copy(wipeCamera.position);
+			renderer.shadowMap.needsUpdate = false;
+			renderer.setRenderTarget(wipeTarget);
+			renderer.clear();
+			renderer.render(scene, wipeCamera);
+			renderer.setRenderTarget(null);
+		}
 		const { x, y, w, h } = wipeRect;
-		const vy = innerHeight - y - h;
-		renderer.setScissorTest(true);
-		renderer.setScissor(x, vy, w, h);
-		renderer.setViewport(x, vy, w, h);
-		renderer.clear();
-		renderer.render(scene, wipeCamera);
-		renderer.setScissorTest(false);
+		renderer.setViewport(x, innerHeight - y - h, w, h);
+		renderer.render(overlayScene, overlayCamera);
 	}
+	mark('wipe');
 }
 
 // ---------- 起動 ----------
 async function init() {
 	requestAnimationFrame(loop);
-	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1400 : 900, era: settings.era });
+	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1100 : 700, era: settings.era });
 	await buildings.init();
 	await terrain.init((p) => {
 		$('load-fill').style.width = `${(p * 85).toFixed(0)}%`;
@@ -853,5 +885,5 @@ init().catch((e) => {
 window.__kiyomizu = {
 	debug, geoToWorld, glider, terrain, camera, startGame, jump,
 	get state() { return state; }, get flight() { return flight; }, get frames() { return frames; },
-	buildings: () => buildings, balloons: () => balloons, fireworks, sound, oni, Vector3,
+	buildings: () => buildings, balloons: () => balloons, fireworks, sound, oni, Vector3, prof, renderer, people: () => people,
 };

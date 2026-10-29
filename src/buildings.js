@@ -6,8 +6,8 @@ import {
 import { createAtlas } from './atlas.js';
 import { parseChunk, buildChunkGeometry } from './buildingMesh.js';
 
-const FAR = 4200; // これより遠いチャンクは表示しない
-const RELEASE = 5200;
+const FAR = 3800; // これより遠いチャンクは表示しない
+const RELEASE = 4800;
 const GRID = 50; // 当たり判定用の格子 (m)
 
 function createMaterial() {
@@ -41,6 +41,15 @@ const crownGeom = new IcosahedronGeometry(2.4, 1).scale(1, 1.25, 1).translate(0,
 const trunkGeom = new CylinderGeometry(0.22, 0.3, 3.6, 6).translate(0, 1.8, 0);
 const crownMat = new MeshLambertMaterial({ color: 0xffffff, flatShading: true });
 const trunkMat = new MeshLambertMaterial({ color: 0x5a3e2b });
+
+// GPU に転送した後は CPU 側の頂点配列が不要なので捨てて、メモリを節約する
+function releaseAfterUpload(geom) {
+	for (const attr of Object.values(geom.attributes)) {
+		attr.onUpload(function () {
+			this.array = null;
+		});
+	}
+}
 
 export class Buildings {
 	constructor(scene, baseUrl, { near = 1400, era = 'now' } = {}) {
@@ -105,6 +114,7 @@ export class Buildings {
 			geom.setAttribute('color', new BufferAttribute(arrays.color, 3));
 			geom.setAttribute('cell', new BufferAttribute(arrays.cell, 1));
 			geom.computeBoundingSphere();
+			releaseAfterUpload(geom);
 			const mesh = new Mesh(geom, this.material);
 			mesh.castShadow = true;
 			mesh.receiveShadow = true;
@@ -215,6 +225,10 @@ export class Buildings {
 	// 毎フレーム: 近いチャンクから順に読み込み・詳細度を切り替える
 	update(pos) {
 		if (!this.landmarks) return;
+		// 全チャンクの距離計算と並べ替えは重いので間引く
+		const now = performance.now();
+		if (now - (this.lastUpdate ?? 0) < 250) return;
+		this.lastUpdate = now;
 		const order = [...this.chunks.values()]
 			.map((c) => ({ c, d: Math.max(0, Math.hypot(c.x - pos.x, c.z - pos.z) - this.chunkSize * 0.5) }))
 			.sort((a, b) => a.d - b.d);

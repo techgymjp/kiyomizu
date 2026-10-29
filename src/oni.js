@@ -305,8 +305,13 @@ export class Oni {
 				}
 				o.pos.addScaledVector(o.vel, dt);
 				// 地面にはもぐらない
-				const g = this.heightAt(o.pos.x, o.pos.z) + 12;
-				if (o.pos.y < g) o.pos.y = g;
+				// 地面の高さの計算は重いので、0.5秒に1回だけ (鬼ごとにずらして)
+				o.groundTimer = (o.groundTimer ?? Math.random() * 0.5) - dt;
+				if (o.groundTimer <= 0 || o.ground === undefined) {
+					o.ground = this.heightAt(o.pos.x, o.pos.z);
+					o.groundTimer = 0.5;
+				}
+				if (o.pos.y < o.ground + 12) o.pos.y = o.ground + 12;
 				if (d < out.nearest) out.nearest = d;
 				if (d < CATCH_RADIUS) out.caught = true;
 			}
