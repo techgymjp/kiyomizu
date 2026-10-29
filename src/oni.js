@@ -7,14 +7,10 @@ import {
 export const CATCH_RADIUS = 7;
 const FIRST_SPAWN = 5; // 秒
 const NEXT_SPAWN = 70; // 秒ごとに鬼が増える
-const MAX_ONI = 6;
-// 最初に出てくる3匹: 前方の左右に2匹、後ろに1匹。距離は毎回まちまち
-// dir: 進行方向からの角度、dist: [最小, 最大] の距離 (m)
-const FIRST = [
-	{ dir: -0.4, dist: [380, 900] },
-	{ dir: 0.45, dist: [380, 900] },
-	{ dir: Math.PI, dist: [300, 650] },
-];
+const MAX_ONI = 14;
+// 最初に出てくる鬼の数。まわり中にランダムに配置する (距離もまちまち)
+const FIRST_COUNT = 10;
+const FIRST_DIST = [300, 1300];
 const SPAWN_DIST = 520;
 const SCALE = 2.6;
 
@@ -159,11 +155,11 @@ export class Oni {
 	}
 
 	// dir: 進行方向からの角度 (0 = 前方)
-	spawn(target, heading, dir, dist = SPAWN_DIST) {
+	spawn(target, heading, dir, dist = SPAWN_DIST, dy = 40) {
 		const n = this.list.length;
 		const obj = buildOni(COLORS[n % COLORS.length]);
 		const a = heading + dir;
-		const pos = new Vector3(target.x + Math.sin(a) * dist, target.y + 40, target.z - Math.cos(a) * dist);
+		const pos = new Vector3(target.x + Math.sin(a) * dist, target.y + dy, target.z - Math.cos(a) * dist);
 		obj.position.copy(pos);
 		this.scene.add(obj);
 		const oni = { obj, pos, vel: new Vector3(), phase: Math.random() * 6, n };
@@ -178,7 +174,13 @@ export class Oni {
 			this.time += dt;
 			if (this.time >= this.nextSpawn && this.list.length < MAX_ONI) {
 				if (!this.list.length) {
-					out.spawned = FIRST.map((f) => this.spawn(glider.position, glider.yaw, f.dir, f.dist[0] + Math.random() * (f.dist[1] - f.dist[0])));
+					out.spawned = [];
+					for (let i = 0; i < FIRST_COUNT; i++) {
+						// 方向は均等にばらしつつ少し揺らす (どちらに逃げても鬼がいる)
+						const dir = (i / FIRST_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+						const dist = FIRST_DIST[0] + Math.random() * (FIRST_DIST[1] - FIRST_DIST[0]);
+						out.spawned.push(this.spawn(glider.position, glider.yaw, dir, dist, -20 + Math.random() * 120));
+					}
 				} else {
 					// 追加の鬼は後ろの左右から交互に
 					const k = this.list.length;
