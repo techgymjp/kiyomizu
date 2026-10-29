@@ -465,6 +465,12 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	55% { opacity: 1; }
 	100% { opacity: 0; transform: scale(1) rotate(0deg); }
 }
+/* 鬼に追われている間: 警報「ブブー、ブブー」に合わせて赤く点滅 (1.5秒で1周) */
+#danger.alarm { animation: alarm-blink 0.75s ease-in-out infinite alternate; }
+@keyframes alarm-blink {
+	from { opacity: 0.15; }
+	to { opacity: 1; }
+}
 #result-title.clear { color: var(--orange); font-size: 40px; }
 
 /* ---------- 昭和初期: 古いカラー写真のような、少し色あせた色味 ---------- */

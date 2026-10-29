@@ -727,6 +727,7 @@ function onPop(it) {
 
 // 鬼ごっこ: 鬼の動きと、近づいたときの演出
 let heartTimer = 0;
+const dangerEl = $('danger');
 function updateOni(dt, active) {
 	const r = oni.update(dt, glider, active);
 	if (!active) return;
@@ -840,6 +841,8 @@ function loop(now) {
 	mark('sim');
 	if (state !== 'flying' && balloons) balloons.update(dt, time, new Vector3(1e9, 0, 0));
 	if (state !== 'flying') updateOni(dt, false);
+	// 警報が鳴っている間は画面のふちを赤く点滅させる
+	dangerEl.classList.toggle('alarm', state === 'flying' && !!flight?.alarm);
 	mark('oni');
 	if (thermals) thermals.update(time);
 	fireworks.update(dt);
