@@ -88,11 +88,10 @@ export class Balloons {
 			g.add(new Line(rope, new LineBasicMaterial({ color: 0x333333 })));
 
 			// 遠くからでも見えるラベル
-			const label = new Sprite(new SpriteMaterial({ map: labelTexture(`🎈 ${spot.name}`), depthTest: false, transparent: true }));
+			const label = new Sprite(new SpriteMaterial({ map: labelTexture(`🎈 ${spot.name}`), transparent: true, depthWrite: false }));
 			label.scale.set(0.16, 0.04, 1);
 			label.material.sizeAttenuation = false;
 			label.position.y = BALLOON_RADIUS + 6;
-			label.renderOrder = 10;
 			g.add(label);
 
 			this.group.add(g);
@@ -118,7 +117,8 @@ export class Balloons {
 			it.banner.rotation.y = Math.sin(time * 0.5 + it.phase) * 0.3;
 			const d = it.group.position.distanceTo(playerPos);
 			// 近くのラベルは隠し、遠すぎるものは薄く
-			it.label.visible = d > 120 && d < 6000;
+			// 近くではアドバルーン自体が見えるので名前ラベルは消す
+			it.label.visible = d > 250 && d < 6000;
 			it.label.material.opacity = d > 3000 ? 0.55 : 1;
 			if (d < HIT_RADIUS) {
 				it.popped = true;
