@@ -53,8 +53,10 @@ $('opt-mute').addEventListener('change', (e) => {
 
 // ---------- 描画 ----------
 const canvas = $('view');
-const renderer = new WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, settings.quality === 'high' ? 2 : 1.25));
+// スマホは描画の負荷を下げる (解像度・アンチエイリアス・表示距離・人の数・ワイプの更新頻度)
+const mobile = matchMedia('(pointer: coarse)').matches;
+const renderer = new WebGLRenderer({ canvas, antialias: !mobile, logarithmicDepthBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, settings.quality === 'high' ? 2 : mobile ? 1 : 1.25));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = SRGBColorSpace;
 renderer.toneMapping = ACESFilmicToneMapping;
@@ -115,7 +117,8 @@ function measureWipe() {
 		wipeCamera.aspect = wipeRect.w / wipeRect.h;
 		wipeCamera.updateProjectionMatrix();
 		// 画面上の大きさの 0.75 倍の解像度で十分
-		wipeTarget.setSize(Math.round(wipeRect.w * 0.75), Math.round(wipeRect.h * 0.75));
+		const res = mobile ? 0.5 : 0.75;
+		wipeTarget.setSize(Math.round(wipeRect.w * res), Math.round(wipeRect.h * res));
 	}
 }
 addEventListener('resize', () => {
@@ -126,7 +129,7 @@ addEventListener('resize', () => {
 });
 
 // ---------- ワールド ----------
-const terrain = new Terrain(scene, { era: settings.era });
+const terrain = new Terrain(scene, { era: settings.era, mobile });
 const glider = new Glider();
 scene.add(glider.object);
 const sound = new Sound();
@@ -563,7 +566,12 @@ async function buildMinimapBase() {
 function drawMinimap() {
 	const mm = $('minimap');
 	const ctx = mm.getContext('2d');
-	const W = mm.width;
+	// キャンバスの解像度によらず 220px 相当の座標で描く (スマホで大きく表示しても文字や印がつぶれない)
+	const k = mm.width / 220;
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	ctx.clearRect(0, 0, mm.width, mm.height);
+	ctx.setTransform(k, 0, 0, k, 0, 0);
+	const W = 220;
 	const toMap = (lat, lon) => ({
 		x: lonToTileX(lon, MAP_Z) * 256 - mapOrigin.x,
 		y: latToTileY(lat, MAP_Z) * 256 - mapOrigin.y,
@@ -571,7 +579,6 @@ function drawMinimap() {
 	worldToGeo(glider.position, geo);
 	const me = toMap(geo.lat, geo.lon);
 	ctx.save();
-	ctx.clearRect(0, 0, W, W);
 	ctx.translate(W / 2, W / 2);
 	ctx.rotate(-glider.yaw); // 進行方向を上に
 	ctx.scale(0.6, 0.6);
@@ -821,7 +828,7 @@ function loop(now) {
 	mark('render');
 	const showWipe = (state === 'ready' || state === 'flying' || state === 'over') && wipeRect && !debug.cam;
 	if (showWipe) {
-		if (frames % 2 === 1) {
+		if (frames % (mobile ? 3 : 2) === 1) {
 			setPilotVisible(true);
 			sky.position.copy(wipeCamera.position);
 			renderer.shadowMap.needsUpdate = false;
@@ -840,7 +847,7 @@ function loop(now) {
 // ---------- 起動 ----------
 async function init() {
 	requestAnimationFrame(loop);
-	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1100 : 700, era: settings.era });
+	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1100 : mobile ? 500 : 700, far: mobile ? 2600 : 3800, era: settings.era });
 	await buildings.init();
 	await terrain.init((p) => {
 		$('load-fill').style.width = `${(p * 85).toFixed(0)}%`;
@@ -857,7 +864,7 @@ async function init() {
 
 	balloons = new Balloons(scene, SPOTS, terrain);
 	thermals = new Thermals(scene, THERMALS, terrain);
-	people = new People(scene, SPOTS, terrain, buildings);
+	people = new People(scene, SPOTS, terrain, buildings, { perSpot: mobile ? 30 : 60 });
 	// 鬼の持ち場は名所のまわり
 	oni.setWorld(SPOTS.map((sp) => { const p = geoToWorld(sp.lat, sp.lon, 0); p.y = terrain.heightAtWorld(p.x, p.z); return p; }), (x, z) => terrain.heightAtWorld(x, z));
 	flight = newFlight();

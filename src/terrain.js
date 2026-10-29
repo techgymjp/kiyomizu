@@ -24,6 +24,8 @@ const COARSE_Z = 12;
 const SEGMENTS = 64;
 // 近くのチャンクは高解像度の写真に差し替える [ズーム, この距離(m)より近いとき]
 const HI_RES = [[17, 1300], [16, 3000]];
+// スマホは z17 を使わない (メモリと転送を節約)
+const HI_RES_MOBILE = [[16, 2000]];
 const HI_RES_HYSTERESIS = 1200;
 
 function decodeDem(bitmap) {
@@ -115,7 +117,8 @@ class Chunk {
 }
 
 export class Terrain {
-	constructor(scene, { era = 'now' } = {}) {
+	constructor(scene, { era = 'now', mobile = false } = {}) {
+		this.hiRes = mobile ? HI_RES_MOBILE : HI_RES;
 		this.era = era;
 		this.group = new Group();
 		this.group.name = 'terrain';
@@ -302,7 +305,7 @@ export class Terrain {
 
 	// 毎フレーム呼ぶ: 近くのチャンクほど高解像度の写真に差し替える
 	desiredLevel(d) {
-		for (const [z, dist] of HI_RES) if (d < dist) return z;
+		for (const [z, dist] of this.hiRes) if (d < dist) return z;
 		return 0;
 	}
 

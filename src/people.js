@@ -130,7 +130,7 @@ const KINDS = {
 };
 
 export class People {
-	constructor(scene, spots, terrain, buildings) {
+	constructor(scene, spots, terrain, buildings, { perSpot = PER_SPOT } = {}) {
 		this.terrain = terrain;
 		this.buildings = buildings;
 		const mat = new MeshLambertMaterial({ vertexColors: true });
@@ -140,7 +140,7 @@ export class People {
 		}));
 		const counts = { woman: 0, maiko: 0, man: 0, samurai: 0 };
 		for (const crowd of this.crowds) {
-			for (let i = 0; i < PER_SPOT; i++) {
+			for (let i = 0; i < perSpot; i++) {
 				const r = Math.random();
 				const kind = r < SAMURAI_RATE ? 'samurai' : r < SAMURAI_RATE + MAIKO_RATE ? 'maiko' : r < 0.66 ? 'woman' : 'man';
 				crowd.people.push({

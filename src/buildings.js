@@ -6,8 +6,6 @@ import {
 import { createAtlas } from './atlas.js';
 import { parseChunk, buildChunkGeometry } from './buildingMesh.js';
 
-const FAR = 3800; // これより遠いチャンクは表示しない
-const RELEASE = 4800;
 const GRID = 50; // 当たり判定用の格子 (m)
 
 function createMaterial() {
@@ -52,7 +50,10 @@ function releaseAfterUpload(geom) {
 }
 
 export class Buildings {
-	constructor(scene, baseUrl, { near = 1400, era = 'now' } = {}) {
+	// near: これより近いチャンクは詳細表示、far: これより遠いチャンクは表示しない (m)
+	constructor(scene, baseUrl, { near = 1400, far = 3800, era = 'now' } = {}) {
+		this.far = far;
+		this.release = far + 1000;
 		this.era = era;
 		this.landmarks = null; // setLandmarks されるまで建物を作らない
 		this.near = near; // これより近いチャンクは詳細表示 (m)
@@ -233,13 +234,13 @@ export class Buildings {
 			.map((c) => ({ c, d: Math.max(0, Math.hypot(c.x - pos.x, c.z - pos.z) - this.chunkSize * 0.5) }))
 			.sort((a, b) => a.d - b.d);
 		for (const { c, d } of order) {
-			if (d > RELEASE) {
+			if (d > this.release) {
 				if (c.buffer || c.mesh) this.release(c);
 				continue;
 			}
-			if (d > FAR * 0.7) this.removeTrees(c);
+			if (d > this.far * 0.7) this.removeTrees(c);
 			else if (c.trees && !c.treeMeshes) this.buildTrees(c);
-			if (d > FAR) {
+			if (d > this.far) {
 				if (c.mesh) {
 					this.group.remove(c.mesh);
 					c.mesh.geometry.dispose();
