@@ -90,11 +90,26 @@ export class Sound {
 			if (this.ctx.state === 'suspended') this.ctx.resume();
 			return;
 		}
-		const ctx = new (window.AudioContext || window.webkitAudioContext)();
+		// スマホは音が途切れてプチプチ鳴らないようバッファを大きめに
+		const mobile = matchMedia('(pointer: coarse)').matches;
+		const AC = window.AudioContext || window.webkitAudioContext;
+		let ctx;
+		try { ctx = new AC({ latencyHint: mobile ? 'playback' : 'interactive' }); } catch { ctx = new AC(); }
 		this.ctx = ctx;
+		this.volume = mobile ? 0.5 : 0.8;
 		this.master = ctx.createGain();
-		this.master.gain.value = this.muted ? 0 : 0.8;
-		this.master.connect(ctx.destination);
+		this.master.gain.value = this.muted ? 0 : this.volume;
+		// 音割れ防止: スマホのスピーカーで割れやすい低音を削り、最後にリミッターをかける
+		const hp = ctx.createBiquadFilter();
+		hp.type = 'highpass';
+		hp.frequency.value = mobile ? 110 : 30;
+		const limiter = ctx.createDynamicsCompressor();
+		limiter.threshold.value = -12;
+		limiter.knee.value = 6;
+		limiter.ratio.value = 12;
+		limiter.attack.value = 0.003;
+		limiter.release.value = 0.25;
+		this.master.connect(hp).connect(limiter).connect(ctx.destination);
 		this.musicBus = ctx.createGain();
 		this.musicBus.gain.value = 0.55;
 		this.musicBus.connect(this.master);
@@ -139,7 +154,7 @@ export class Sound {
 
 	setMuted(m) {
 		this.muted = m;
-		if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.05);
+		if (this.master) this.master.gain.setTargetAtTime(m ? 0 : this.volume, this.ctx.currentTime, 0.05);
 	}
 
 	// ---------- 音の部品 ----------
