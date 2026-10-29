@@ -282,7 +282,7 @@ let flight = null;
 let titleTime = 0;
 
 function newFlight() {
-	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false, oniDist: Infinity, clear: false };
+	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false, oniDist: Infinity, oniChase: Infinity, chasers: 0, clear: false };
 }
 
 function placeOnStage() {
@@ -506,10 +506,12 @@ function updateHud() {
 	const od = flight.oniDist;
 	$('oni').classList.toggle('hidden', !Number.isFinite(od));
 	if (Number.isFinite(od)) {
-		$('oni-dist').textContent = od >= 1000 ? `${(od / 1000).toFixed(1)}km` : `${od.toFixed(0)}m`;
-		$('oni').classList.toggle('danger', od < 150);
+		$('oni-dist').textContent = (od >= 1000 ? `${(od / 1000).toFixed(1)}km` : `${od.toFixed(0)}m`)
+			+ (flight.chasers ? ` ・追跡中 ${flight.chasers}匹` : '');
+		$('oni').classList.toggle('danger', flight.chasers > 0);
 	}
-	$('danger').style.opacity = Number.isFinite(od) && state === 'flying' ? Math.max(0, Math.min(1, (200 - od) / 160)) : 0;
+	const oc = flight.oniChase;
+	$('danger').style.opacity = Number.isFinite(oc) && state === 'flying' ? Math.max(0, Math.min(1, (220 - oc) / 170)) : 0;
 
 	const near = balloons.nearest(glider.position);
 	if (near) {
@@ -585,6 +587,13 @@ function drawMinimap() {
 		ctx.save();
 		ctx.translate(p.x, p.y);
 		ctx.rotate(glider.yaw);
+		if (o.state === 'chase') {
+			// 追いかけてくる鬼は赤い丸で囲む
+			ctx.beginPath();
+			ctx.arc(0, 0, 20, 0, Math.PI * 2);
+			ctx.fillStyle = 'rgba(255,40,40,0.55)';
+			ctx.fill();
+		}
 		ctx.fillText('👹', 0, 0);
 		ctx.restore();
 	}
@@ -652,9 +661,10 @@ function onPop(it) {
 		endGame('🏯 全制覇！ 🏯', '京都の名所をすべてめぐりました！ 鬼からも逃げ切った！', true);
 		return;
 	}
-	const more = oni.addForCheckpoint(flight.checkpoints.length, glider);
+	const unpopped = balloons.items.filter((b) => !b.popped).map((b) => b.base);
+	const more = oni.addForCheckpoint(flight.checkpoints.length, glider, unpopped);
 	if (more) setTimeout(() => sound.oniLaugh(), 900);
-	showMessage(`🎆 チェックポイント！ 🎆\n${it.spot.name}\nターボ +1 🚀${more ? `\n👹 鬼が増えた！ (${oni.list.length}匹)` : ''}`, 2.6);
+	showMessage(`🎆 チェックポイント！ 🎆\n${it.spot.name}\nターボ +1 🚀${more ? `\n👹 見張りの鬼が増えた！ (${oni.list.length}匹)` : ''}`, 2.6);
 }
 
 // 鬼ごっこ: 鬼の動きと、近づいたときの演出
@@ -663,15 +673,20 @@ function updateOni(dt, active) {
 	const r = oni.update(dt, glider, active);
 	if (!active) return;
 	if (r.spawned) {
+		showMessage(`👹 鬼が${r.spawned.length}匹、京都を徘徊中…\n見つからないように！`, 2.6);
+	}
+	if (r.found.length) {
 		sound.oniLaugh();
-		showMessage(`👹 鬼が${r.spawned.length}匹来た！\nまわりは鬼だらけ！`, 2.4);
+		showMessage(r.found.length > 1 ? `👹 鬼${r.found.length}匹に見つかった！` : '👹 鬼に見つかった！\n逃げろ〜！', 1.8);
 	}
 	flight.oniDist = r.nearest;
-	// 近いほど速くなる心臓の音
+	flight.oniChase = r.nearestChase;
+	flight.chasers = oni.list.filter((o) => o.state === 'chase').length;
+	// 追いかけてくる鬼が近いほど速くなる心臓の音
 	heartTimer -= dt;
-	if (r.nearest < 180 && heartTimer <= 0) {
+	if (r.nearestChase < 180 && heartTimer <= 0) {
 		sound.heartbeat();
-		heartTimer = 0.35 + (r.nearest / 180) * 0.8;
+		heartTimer = 0.35 + (r.nearestChase / 180) * 0.8;
 	}
 	if (r.caught) endGame('つかまった！', '鬼に捕まってしまいました… 👹');
 }
@@ -811,6 +826,8 @@ async function init() {
 	balloons = new Balloons(scene, SPOTS, terrain);
 	thermals = new Thermals(scene, THERMALS, terrain);
 	people = new People(scene, SPOTS, terrain, buildings);
+	// 鬼の持ち場は名所のまわり
+	oni.setWorld(SPOTS.map((sp) => { const p = geoToWorld(sp.lat, sp.lon, 0); p.y = terrain.heightAtWorld(p.x, p.z); return p; }), (x, z) => terrain.heightAtWorld(x, z));
 	flight = newFlight();
 	await buildMinimapBase();
 

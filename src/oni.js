@@ -1,17 +1,16 @@
-// 鬼ごっこの鬼: 雲に乗った赤鬼が空を飛んで追いかけてくる
+// 鬼ごっこの鬼: 雲に乗った鬼が京都の空を徘徊し、プレイヤーを見つけると追いかけてくる
 import {
 	Group, Mesh, SphereGeometry, ConeGeometry, CylinderGeometry, CapsuleGeometry, MeshLambertMaterial,
-	MeshBasicMaterial, CanvasTexture, SRGBColorSpace, Vector3,
+	MeshBasicMaterial, CanvasTexture, SRGBColorSpace, Vector3, Float32BufferAttribute,
 } from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export const CATCH_RADIUS = 7;
-const FIRST_SPAWN = 5; // 秒
-const CP_PER_ONI = 3; // アドバルーンをこの数割るごとに鬼が1匹増える
-const MAX_ONI = 24; // 10匹 + 42か所 / 3
-// 最初に出てくる鬼の数。まわり中にランダムに配置する (距離もまちまち)
+const FIRST_SPAWN = 0.5; // 秒
+const CP_PER_ONI = 1; // アドバルーンをこの数割るごとに鬼が1匹増える
+const MAX_ONI = 52; // 10匹 + 42か所
+// 最初に京都市内の名所のまわりに散らばっている鬼の数
 const FIRST_COUNT = 10;
-const FIRST_DIST = [300, 1300];
-const SPAWN_DIST = 520;
 const SCALE = 2.6;
 
 function tigerTexture() {
@@ -34,7 +33,7 @@ function tigerTexture() {
 	return t;
 }
 
-function buildOni(color) {
+function makeOni(color) {
 	const g = new Group();
 	const skin = new MeshLambertMaterial({ color });
 	const white = new MeshLambertMaterial({ color: 0xffffff });
@@ -54,8 +53,8 @@ function buildOni(color) {
 		cloud.add(m);
 	}
 	cloud.position.y = -1.0;
+	cloud.name = 'cloud';
 	g.add(cloud);
-	g.userData.cloud = cloud;
 
 	// 体
 	const body = new Mesh(new CapsuleGeometry(0.55, 0.7, 6, 12), skin);
@@ -71,6 +70,7 @@ function buildOni(color) {
 	}
 	// 頭
 	const head = new Group();
+	head.name = 'head';
 	head.position.y = 1.65;
 	g.add(head);
 	head.add(new Mesh(new SphereGeometry(0.55, 16, 12), skin));
@@ -113,6 +113,7 @@ function buildOni(color) {
 	armL.rotation.z = 0.5;
 	g.add(armL);
 	const arm = new Group();
+	arm.name = 'arm';
 	arm.position.set(0.7, 1.05, 0);
 	g.add(arm);
 	const armR = new Mesh(new CapsuleGeometry(0.16, 0.6, 4, 8), skin);
@@ -130,14 +131,55 @@ function buildOni(color) {
 		stud.rotation.z = -Math.PI / 2;
 		arm.add(stud);
 	}
-	g.userData.arm = arm;
-	g.userData.head = head;
+	// 描画を軽くするため、部位ごとに1つのメッシュにまとめる (鬼が50匹以上になるので)
+	for (const part of [g, cloud, head, arm]) flatten(part);
 	g.scale.setScalar(SCALE);
 	g.traverse((o) => { o.castShadow = true; });
 	return g;
 }
 
+const flatMaterial = new MeshLambertMaterial({ vertexColors: true });
+
+// group の直下にある単色のメッシュを、頂点カラー付きの1つのメッシュにまとめる
+function flatten(group) {
+	const parts = [];
+	for (const child of [...group.children]) {
+		if (!child.isMesh || child.material.map) continue;
+		child.updateMatrix();
+		const geom = child.geometry.clone().applyMatrix4(child.matrix).toNonIndexed();
+		const c = child.material.color;
+		const n = geom.attributes.position.count;
+		const col = new Float32Array(n * 3);
+		for (let i = 0; i < n; i++) col.set([c.r, c.g, c.b], i * 3);
+		geom.setAttribute('color', new Float32BufferAttribute(col, 3));
+		for (const k of Object.keys(geom.attributes)) if (!['position', 'normal', 'color'].includes(k)) geom.deleteAttribute(k);
+		parts.push(geom);
+		group.remove(child);
+	}
+	if (parts.length) group.add(new Mesh(mergeGeometries(parts), flatMaterial));
+}
+
+// 色ごとにひな形を作っておき、複製して使う (ジオメトリは共有)
+const templates = new Map();
+function buildOni(color) {
+	if (!templates.has(color)) templates.set(color, makeOni(color));
+	const g = templates.get(color).clone();
+	g.userData.arm = g.getObjectByName('arm');
+	g.userData.head = g.getObjectByName('head');
+	g.userData.cloud = g.getObjectByName('cloud');
+	return g;
+}
+
 const COLORS = [0xd83a2e, 0x2f5fd8, 0x2fa84f, 0x8a3fd8, 0xf0a020, 0x222222];
+
+const DETECT = 450; // この距離にプレイヤーが入ると見つかる (m)
+const LOSE = 900; // これより離れると見失う
+const WANDER_SPEED = 6;
+const WANDER_RADIUS = 450; // 持ち場のまわりをうろつく範囲
+const SAFE_START = 600; // スタート地点のこの範囲には置かない
+const SEPARATION = 45; // 追いかける鬼どうしがこれより近いと離れる
+
+const tmp = new Vector3();
 
 export class Oni {
 	constructor(scene) {
@@ -145,6 +187,14 @@ export class Oni {
 		this.list = [];
 		this.time = 0;
 		this.nextSpawn = FIRST_SPAWN;
+		this.homes = [];
+		this.heightAt = () => 0;
+	}
+
+	// homes: 鬼の持ち場の候補 (名所の位置)、heightAtWorld: 地面の高さ
+	setWorld(homes, heightAtWorld) {
+		this.homes = homes;
+		this.heightAt = heightAtWorld;
 	}
 
 	reset() {
@@ -154,64 +204,119 @@ export class Oni {
 		this.nextSpawn = FIRST_SPAWN;
 	}
 
-	// dir: 進行方向からの角度 (0 = 前方)
-	spawn(target, heading, dir, dist = SPAWN_DIST, dy = 40) {
+	// 持ち場の近くに鬼を置く (最初は徘徊している)
+	spawnAt(home) {
 		const n = this.list.length;
 		const obj = buildOni(COLORS[n % COLORS.length]);
-		const a = heading + dir;
-		const pos = new Vector3(target.x + Math.sin(a) * dist, target.y + dy, target.z - Math.cos(a) * dist);
+		const pos = home.clone();
+		const a = Math.random() * Math.PI * 2, r = 100 + Math.random() * 300;
+		pos.x += Math.cos(a) * r;
+		pos.z += Math.sin(a) * r;
+		pos.y = this.heightAt(pos.x, pos.z) + 60 + Math.random() * 140;
 		obj.position.copy(pos);
 		this.scene.add(obj);
-		const oni = { obj, pos, vel: new Vector3(), phase: Math.random() * 6, n };
+		const oni = {
+			obj, pos, vel: new Vector3(), phase: Math.random() * 6, n,
+			home: home.clone(), state: 'wander', waypoint: pos.clone(),
+			flank: Math.random() * Math.PI * 2, // 回り込む方向 (鬼ごとに違う)
+		};
+		this.pickWaypoint(oni);
 		this.list.push(oni);
 		return oni;
 	}
 
-	// アドバルーンを割ったとき: 3個ごとに後ろから鬼が1匹増える。増えたらその鬼を返す
-	addForCheckpoint(count, glider) {
-		if (count % CP_PER_ONI !== 0 || !this.list.length || this.list.length >= MAX_ONI) return null;
-		const k = this.list.length;
-		return this.spawn(glider.position, glider.yaw, Math.PI + (k % 2 ? 1 : -1) * (0.3 + Math.random() * 0.6));
+	pickWaypoint(o) {
+		const a = Math.random() * Math.PI * 2, r = Math.random() * WANDER_RADIUS;
+		const x = o.home.x + Math.cos(a) * r, z = o.home.z + Math.sin(a) * r;
+		o.waypoint.set(x, this.heightAt(x, z) + 50 + Math.random() * 170, z);
 	}
 
-	// 戻り値: { spawned, nearest(距離), caught }
+	// プレイヤーから離れた持ち場を、なるべくばらけるように選ぶ
+	chooseHomes(count, from, minDist) {
+		const list = this.homes.filter((h) => Math.hypot(h.x - from.x, h.z - from.z) > minDist);
+		for (let i = list.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[list[i], list[j]] = [list[j], list[i]];
+		}
+		return list.slice(0, count);
+	}
+
+	// アドバルーンを割ったとき: 1個ごとに、まだ割っていない名所の見張りとして鬼が1匹増える
+	addForCheckpoint(count, glider, unpopped) {
+		if (count % CP_PER_ONI !== 0 || !this.list.length || this.list.length >= MAX_ONI) return null;
+		const far = unpopped.filter((h) => Math.hypot(h.x - glider.position.x, h.z - glider.position.z) > 700);
+		const home = (far.length ? far : unpopped)[Math.floor(Math.random() * (far.length || unpopped.length))];
+		return home ? this.spawnAt(home) : null;
+	}
+
+	// 戻り値: { spawned, found (見つけた鬼), nearest, nearestChase, caught }
 	update(dt, glider, active) {
-		const out = { spawned: null, nearest: Infinity, caught: false, nearestOni: null };
+		const out = { spawned: null, found: [], nearest: Infinity, nearestChase: Infinity, caught: false };
 		if (active) {
 			this.time += dt;
 			if (this.time >= this.nextSpawn && !this.list.length) {
-				out.spawned = [];
-				for (let i = 0; i < FIRST_COUNT; i++) {
-					// 方向は均等にばらしつつ少し揺らす (どちらに逃げても鬼がいる)
-					const dir = (i / FIRST_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-					const dist = FIRST_DIST[0] + Math.random() * (FIRST_DIST[1] - FIRST_DIST[0]);
-					out.spawned.push(this.spawn(glider.position, glider.yaw, dir, dist, -20 + Math.random() * 120));
-				}
+				out.spawned = this.chooseHomes(FIRST_COUNT, glider.position, SAFE_START).map((h) => this.spawnAt(h));
 			}
 		}
-		const speed = Math.min(27, 15 + this.time * 0.04); // だんだん速くなる
-		const to = new Vector3();
+		const chaseSpeed = Math.min(27, 15 + this.time * 0.04); // だんだん速くなる
+		const p = glider.position;
 		for (const o of this.list) {
 			o.phase += dt;
 			if (active) {
-				// プレイヤーの少し先を狙う
-				const d = o.pos.distanceTo(glider.position);
-				to.copy(glider.velocity).multiplyScalar(Math.min(3, d / 40)).add(glider.position).sub(o.pos);
-				const desired = to.normalize().multiplyScalar(speed + o.n * 0.8);
-				o.vel.lerp(desired, Math.min(1, dt * 0.9));
-				o.pos.addScaledVector(o.vel, dt);
-				if (d < out.nearest) {
-					out.nearest = d;
-					out.nearestOni = o;
+				const d = o.pos.distanceTo(p);
+				const desired = tmp;
+				if (o.state === 'chase') {
+					if (d > LOSE) {
+						// 見失ったら持ち場に戻る
+						o.state = 'wander';
+						o.waypoint.copy(o.home);
+						o.waypoint.y = this.heightAt(o.home.x, o.home.z) + 120;
+					}
+					// 少し先を、鬼ごとに違う方向から回り込むように狙う (近づくほど本体を直接狙う)
+					const flankR = Math.min(70, d * 0.35);
+					desired.copy(glider.velocity).multiplyScalar(Math.min(3, d / 40)).add(p);
+					desired.x += Math.cos(o.flank) * flankR;
+					desired.z += Math.sin(o.flank) * flankR;
+					desired.sub(o.pos).normalize().multiplyScalar(chaseSpeed + (o.n % 5) * 0.6);
+					// 団子にならないよう、近くの追いかけ役から離れる
+					for (const q of this.list) {
+						if (q === o || q.state !== 'chase') continue;
+						const dx = o.pos.x - q.pos.x, dy = o.pos.y - q.pos.y, dz = o.pos.z - q.pos.z;
+						const dd = Math.hypot(dx, dy, dz);
+						if (dd > 0.1 && dd < SEPARATION) {
+							const k = ((SEPARATION - dd) / SEPARATION) * chaseSpeed * 0.8;
+							desired.x += (dx / dd) * k;
+							desired.y += (dy / dd) * k;
+							desired.z += (dz / dd) * k;
+						}
+					}
+					o.vel.lerp(desired, Math.min(1, dt * 0.9));
+					out.nearestChase = Math.min(out.nearestChase, d);
+				} else {
+					if (d < DETECT) {
+						// 見つけた！
+						o.state = 'chase';
+						out.found.push(o);
+					}
+					// 持ち場のまわりをうろうろ
+					if (o.pos.distanceTo(o.waypoint) < 25) this.pickWaypoint(o);
+					desired.copy(o.waypoint).sub(o.pos).normalize().multiplyScalar(WANDER_SPEED);
+					o.vel.lerp(desired, Math.min(1, dt * 0.6));
 				}
+				o.pos.addScaledVector(o.vel, dt);
+				// 地面にはもぐらない
+				const g = this.heightAt(o.pos.x, o.pos.z) + 12;
+				if (o.pos.y < g) o.pos.y = g;
+				if (d < out.nearest) out.nearest = d;
 				if (d < CATCH_RADIUS) out.caught = true;
 			}
-			// 見た目: ふわふわ浮いて、進む方向を向き、金棒を振る
+			// 見た目: ふわふわ浮いて、進む方向を向き、金棒を振る (追いかけるときは激しく)
+			const chasing = o.state === 'chase';
 			o.obj.position.copy(o.pos);
 			o.obj.position.y += Math.sin(o.phase * 2) * 0.8;
 			if (o.vel.lengthSq() > 0.1) o.obj.rotation.y = Math.atan2(-o.vel.x, -o.vel.z);
-			o.obj.userData.arm.rotation.z = Math.sin(o.phase * 6) * 0.6;
-			o.obj.userData.head.rotation.z = Math.sin(o.phase * 3) * 0.15;
+			o.obj.userData.arm.rotation.z = Math.sin(o.phase * (chasing ? 9 : 3)) * (chasing ? 0.8 : 0.3);
+			o.obj.userData.head.rotation.z = Math.sin(o.phase * (chasing ? 3 : 1)) * (chasing ? 0.15 : 0.35);
 			o.obj.userData.cloud.rotation.y += dt * 1.5;
 		}
 		return out;
