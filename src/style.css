@@ -418,9 +418,9 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	#target-arrow { width: 36px; height: 36px; font-size: 19px; }
 	#target-name { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 	#target-info { font-size: 16px; font-weight: 800; color: #5a4f78; }
-	#wipe { width: 38vw; }
-	/* スマホ: レーダーマップはワイプの下にワイプと同じ幅で大きく */
-	#minimap { width: 38vw; height: 38vw; bottom: auto; top: calc(12px + 38vw * 0.625 + 14px); right: 12px; }
+	/* スマホ: ワイプはなくして、右上にレーダーマップを大きく */
+	#wipe { display: none; }
+	#minimap { width: 42vw; height: 42vw; bottom: auto; top: 12px; right: 12px; }
 	#turbo { bottom: 8px; width: 46vw; left: auto; right: 12px; transform: none; }
 	.turbo-head small { display: none; }
 	#touch-jet { bottom: 90px; }
