@@ -132,6 +132,7 @@ const terrain = new Terrain(scene, { era: settings.era, mobile });
 const glider = new Glider();
 scene.add(glider.object);
 const sound = new Sound();
+sound.era = settings.era; // 昭和初期で始めたときは BGM も昭和の曲に
 sound.setMuted(settings.muted);
 const fireworks = new Fireworks(scene);
 const oni = new Oni(scene);
@@ -524,7 +525,7 @@ function updateHud() {
 	$('oni').classList.toggle('hidden', !Number.isFinite(od));
 	if (Number.isFinite(od)) {
 		$('oni-dist').textContent = (od >= 1000 ? `${(od / 1000).toFixed(1)}km` : `${od.toFixed(0)}m`)
-			+ (flight.chasers ? ` ・追跡中 ${flight.chasers}匹` : '');
+			+ (flight.chasers > 1 ? ` ・追跡中×${flight.chasers}` : flight.chasers ? ' ・追跡中' : '');
 		$('oni').classList.toggle('danger', flight.chasers > 0);
 	}
 	const oc = flight.oniChase;
