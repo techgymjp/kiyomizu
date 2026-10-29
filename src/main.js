@@ -300,7 +300,7 @@ let flight = null;
 let titleTime = 0;
 
 function newFlight() {
-	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false, oniDist: Infinity, oniChase: Infinity, chasers: 0, clear: false };
+	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false, oniDist: Infinity, oniChase: Infinity, chasers: 0, alarm: false, alarmTimer: 0, clear: false };
 }
 
 function placeOnStage() {
@@ -740,6 +740,21 @@ function updateOni(dt, active) {
 	flight.oniDist = r.nearest;
 	flight.oniChase = r.nearestChase;
 	flight.chasers = oni.list.filter((o) => o.state === 'chase').length;
+	// 追いかけられている間は BGM を止めて「ブブー、ブブー」と警報を鳴らす
+	const chased = flight.chasers > 0;
+	if (chased !== flight.alarm) {
+		flight.alarm = chased;
+		flight.alarmTimer = 0;
+		if (chased) sound.stopSong(0.3);
+		else if (!r.caught) sound.playSong('flight');
+	}
+	if (chased) {
+		flight.alarmTimer -= dt;
+		if (flight.alarmTimer <= 0) {
+			sound.alarm();
+			flight.alarmTimer = 1.5;
+		}
+	}
 	// 追いかけてくる鬼が近いほど速くなる心臓の音
 	heartTimer -= dt;
 	if (r.nearestChase < 180 && heartTimer <= 0) {

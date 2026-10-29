@@ -327,8 +327,8 @@ export class Sound {
 	// 時代を切り替える (BGM も切り替わる)
 	setEra(era) {
 		this.era = era;
-		const name = this.song?.name ?? this.pendingSong;
-		if (name && this.ctx) this.playSong(name);
+		// 鳴っている曲だけ切り替える (鬼の警報中などで止めているときはそのまま)
+		if (this.song && this.ctx) this.playSong(this.song.name);
 	}
 
 	// アコーディオン: 少しずらした2枚のリードで、ミュゼットのうなり
@@ -642,6 +642,32 @@ export class Sound {
 			this.burstNoise(at, 0.15, { type: 'bandpass', f: 700, gain: 0.3, decay: 0.05, q: 2 });
 		}
 		this.tone(70, t, 1.2, { slideTo: 40, gain: 0.5 });
+	}
+
+	// 鬼に追われているときの警報「ブブー、ブブー」
+	alarm() {
+		if (!this.ctx) return;
+		const ctx = this.ctx;
+		const t0 = ctx.currentTime;
+		for (const at of [t0, t0 + 0.42]) {
+			const g = ctx.createGain();
+			g.gain.setValueAtTime(0.0001, at);
+			g.gain.linearRampToValueAtTime(0.13, at + 0.015);
+			g.gain.setValueAtTime(0.13, at + 0.28);
+			g.gain.linearRampToValueAtTime(0.0001, at + 0.32);
+			const lp = ctx.createBiquadFilter();
+			lp.type = 'lowpass';
+			lp.frequency.value = 2400;
+			g.connect(lp).connect(this.sfx);
+			for (const [type, f] of [['square', 196], ['sawtooth', 233]]) {
+				const o = ctx.createOscillator();
+				o.type = type;
+				o.frequency.value = f;
+				o.connect(g);
+				o.start(at);
+				o.stop(at + 0.35);
+			}
+		}
 	}
 
 	// 鬼が近いときの心臓の音 (ドクン)
