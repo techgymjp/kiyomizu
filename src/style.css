@@ -232,6 +232,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 #hud-vario.down { color: var(--red); }
 
 #target {
+	z-index: 2;
 	position: absolute;
 	top: 12px;
 	left: 50%;
@@ -412,7 +413,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	.score-pill .icon { font-size: 18px; }
 	.score-pill .sub { font-size: 12px; }
 	.gauges .v { font-size: 15px; }
-	/* スマホ: 目標と鬼の表示は左下 (スティックの上) に。上はワイプとぶつかるため */
+	/* スマホ: 目標と鬼の表示は左下 (スティックの上) に */
 	#target { top: auto; bottom: 190px; left: 12px; transform: none; max-width: 56vw; padding: 4px 10px 4px 4px; gap: 6px; }
 	#target-arrow { width: 28px; height: 28px; font-size: 15px; }
 	#target-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -430,12 +431,13 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ---------- 鬼ごっこ ---------- */
 #oni {
+	z-index: 2;
 	position: absolute;
 	top: 70px;
 	left: 50%;
 	transform: translateX(-50%);
-	font-size: 15px;
-	padding: 4px 14px;
+	font-size: 19px;
+	padding: 5px 16px;
 	color: #8a1c1c;
 }
 #oni.danger { background: var(--red); color: #fff; animation: blink 0.4s infinite alternate; }
@@ -452,5 +454,5 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 body.showa #view { filter: sepia(0.18) saturate(0.9) contrast(1.04); }
 
 @media (max-width: 720px) {
-	#oni { top: auto; bottom: 240px; left: 12px; transform: none; font-size: 12px; }
+	#oni { top: auto; bottom: 246px; left: 12px; transform: none; font-size: 16px; padding: 5px 12px; }
 }
