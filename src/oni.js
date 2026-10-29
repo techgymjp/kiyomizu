@@ -191,6 +191,13 @@ export class Oni {
 		this.heightAt = () => 0;
 	}
 
+	// 飛び降りた瞬間にシェーダー作成で固まらないよう、読み込み中に全色の鬼を作っておく
+	warmupObjects() {
+		const g = new Group();
+		for (const c of COLORS) g.add(buildOni(c));
+		return g;
+	}
+
 	// homes: 鬼の持ち場の候補 (名所の位置)、heightAtWorld: 地面の高さ
 	setWorld(homes, heightAtWorld) {
 		this.homes = homes;

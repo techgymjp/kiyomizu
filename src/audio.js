@@ -199,29 +199,38 @@ export class Sound {
 		this.stopSong();
 		const song = SONGS[name];
 		const beat = 60 / song.bpm;
-		const length = Math.max(...song.tracks.map((tr) => tr.notes.reduce((a, n) => a + n[1], 0)));
-		const state = { name, start: this.ctx.currentTime + 0.08, bar: 0, gain: this.ctx.createGain() };
+		const length = Math.max(...song.tracks.map((tr) => tr.notes.reduce((a, n) => a + n[1], 0))) * beat;
+		const state = { name, gain: this.ctx.createGain() };
 		state.gain.connect(this.musicBus);
-		const scheduleOnce = (offset) => {
-			for (const tr of song.tracks) {
-				let t = offset;
-				for (const [n, b] of tr.notes) {
-					if (n) this.playNote(tr.wave, n, t, b * beat, tr.gain, state.gain);
-					t += b * beat;
+		const start = this.ctx.currentTime + 0.08;
+		// 1曲分をまとめて予約すると一度に何百ものノードができて音が途切れるので、
+		// 少し先 (AHEAD 秒) までの音だけを少しずつ予約する
+		const AHEAD = 0.8;
+		const cursors = song.tracks.map((tr) => ({ tr, i: 0, t: start, loop: 0 }));
+		const pump = () => {
+			const until = this.ctx.currentTime + AHEAD;
+			let alive = false;
+			for (const c of cursors) {
+				while (c.t < until) {
+					if (c.i >= c.tr.notes.length) {
+						if (!song.loop) break;
+						// 各パートの長さが違っても頭をそろえる
+						c.loop++;
+						c.i = 0;
+						c.t = start + c.loop * length;
+						continue;
+					}
+					const [n, b] = c.tr.notes[c.i++];
+					// 画面の処理が重くて予約が遅れた音は、まとめて鳴らさずに飛ばす
+					if (n && c.t > this.ctx.currentTime - 0.03) this.playNote(c.tr.wave, n, c.t, b * beat, c.tr.gain, state.gain);
+					c.t += b * beat;
 				}
+				if (song.loop || c.i < c.tr.notes.length) alive = true;
 			}
+			if (!alive) clearInterval(state.timer);
 		};
-		scheduleOnce(state.start);
-		if (song.loop) {
-			// 1周分ずつ先回りして予約する
-			state.timer = setInterval(() => {
-				const next = state.start + (state.bar + 1) * length * beat;
-				if (next - this.ctx.currentTime < 1.5) {
-					state.bar++;
-					scheduleOnce(next);
-				}
-			}, 300);
-		}
+		pump();
+		state.timer = setInterval(pump, 150);
 		this.song = state;
 	}
 

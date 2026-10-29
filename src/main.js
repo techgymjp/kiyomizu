@@ -56,6 +56,8 @@ const canvas = $('view');
 // スマホは描画の負荷を下げる (解像度・アンチエイリアス・表示距離・人の数・ワイプの更新頻度)
 const mobile = matchMedia('(pointer: coarse)').matches;
 const renderer = new WebGLRenderer({ canvas, antialias: !mobile, logarithmicDepthBuffer: true });
+// 本番ではシェーダーのエラーログ取得を省く (初回描画時に処理が止まるのを避ける)
+renderer.debug.checkShaderErrors = !import.meta.env.PROD;
 renderer.setPixelRatio(Math.min(devicePixelRatio, settings.quality === 'high' ? 2 : mobile ? 1 : 1.25));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = SRGBColorSpace;
@@ -880,10 +882,46 @@ async function init() {
 		await new Promise((r) => setTimeout(r, 100));
 	}
 
+	await warmupShaders();
+
 	$('loading').classList.add('hidden');
 	$('title-buttons').classList.remove('hidden');
 	state = 'title';
 	if (sound.ctx) sound.playSong('title');
+}
+
+// ゲーム中に初めて出てくるもの (鬼・ジェットの炎・花火など) のシェーダーとテクスチャを
+// 読み込み中に用意しておく。これをしないとスタート直後に数百ms〜数秒固まり、音も途切れる
+async function warmupShaders() {
+	const extra = oni.warmupObjects();
+	extra.position.copy(startPos);
+	scene.add(extra);
+	// 隠れているものも含めて全部見える状態にする / 元に戻す (途中でゲームループが動かないよう同期的に使う)
+	const showAll = () => {
+		const hidden = [], culled = [];
+		scene.traverse((o) => {
+			if (!o.visible) { hidden.push(o); o.visible = true; }
+			if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; }
+		});
+		return () => {
+			for (const o of culled) o.frustumCulled = true;
+			for (const o of hidden) o.visible = false;
+		};
+	};
+	try {
+		let restore = showAll();
+		const job = renderer.compileAsync(scene, camera);
+		restore();
+		await job;
+		// 画面外のものも一度描いておく (シェーダーのリンクとテクスチャ転送が済む)。
+		// 画面に直接描く (オフスクリーンに描くと色空間の違う別のシェーダーになる)。次のフレームで上書きされる
+		restore = showAll();
+		renderer.render(scene, camera);
+		restore();
+	} catch (e) {
+		console.warn('warmup', e);
+	}
+	scene.remove(extra);
 }
 
 init().catch((e) => {

@@ -1,6 +1,6 @@
 // 軽量化した PLATEAU 建物データを読み込み、距離に応じて描画・当たり判定を行う
 import {
-	BufferGeometry, BufferAttribute, Mesh, MeshLambertMaterial, Group, InstancedMesh, Object3D, Color,
+	BufferGeometry, BufferAttribute, Sphere, Vector3, Mesh, MeshLambertMaterial, Group, InstancedMesh, Object3D, Color,
 	IcosahedronGeometry, CylinderGeometry,
 } from 'three';
 import { createAtlas } from './atlas.js';
@@ -70,7 +70,7 @@ export class Buildings {
 		this.worker.onmessage = (e) => {
 			const job = this.jobs.get(e.data.id);
 			this.jobs.delete(e.data.id);
-			job?.(e.data.arrays);
+			job?.(e.data.arrays, e.data.sphere);
 		};
 		this.busy = 0;
 	}
@@ -104,7 +104,7 @@ export class Buildings {
 		// チャンクの近くの名所だけ渡す (隣のチャンクにはみ出した建物も見つけられるよう少し広めに)
 		const landmarks = this.landmarks.filter((l) => l.x > ox - 60 && l.x < ox + size + 60 && l.z > oz - 60 && l.z < oz + size + 60);
 		this.worker.postMessage({ id, buffer: chunk.buffer.slice(0), ox, oz, size, detail, landmarks, era: this.era });
-		this.jobs.set(id, (arrays) => {
+		this.jobs.set(id, (arrays, sphere) => {
 			this.busy--;
 			chunk.building = false;
 			if (!chunk.buffer) return; // その間に解放された
@@ -114,7 +114,7 @@ export class Buildings {
 			geom.setAttribute('uv', new BufferAttribute(arrays.uv, 2));
 			geom.setAttribute('color', new BufferAttribute(arrays.color, 3));
 			geom.setAttribute('cell', new BufferAttribute(arrays.cell, 1));
-			geom.computeBoundingSphere();
+			geom.boundingSphere = new Sphere(new Vector3(sphere[0], sphere[1], sphere[2]), sphere[3]);
 			releaseAfterUpload(geom);
 			const mesh = new Mesh(geom, this.material);
 			mesh.castShadow = true;
