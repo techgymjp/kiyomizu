@@ -37,8 +37,9 @@
 		<div id="wipe"><span class="wipe-label">● 前方カメラ</span></div>
 		<div id="oni" class="pill hidden">👹 鬼 <span id="oni-dist">-</span></div>
 		<div id="danger"></div>
+		<div id="timeslip"></div>
 		<div id="turbo" class="pill">
-			<div class="turbo-head"><span class="turbo-title">🚀 ターボ</span><span id="turbo-count">×0</span><small>Space / Shift で噴射</small></div>
+			<div class="turbo-head"><span class="turbo-title">🚀 ターボ</span><span id="turbo-count">×0</span><small>Space / Shift で噴射 ・ T で時代</small></div>
 			<div class="turbo-bar"><div id="turbo-fill"></div></div>
 		</div>
 		<canvas id="minimap" width="300" height="300"></canvas>
@@ -53,6 +54,7 @@
 		<div id="stick"><div id="stick-knob"></div></div>
 		<button id="touch-jet">🚀<br />ターボ</button>
 		<button id="touch-cam">視点</button>
+		<button id="touch-era">時代</button>
 	</div>
 
 	<!-- タイトル -->
@@ -107,6 +109,7 @@
 				<li><span class="key">← →</span>左右に旋回</li>
 				<li><span class="key">Space</span>ターボ噴射（押している間だけ）。最初は<b>1つ</b>。アドバルーンで増えます</li>
 				<li><span class="key">C</span>視点切替（後ろから ⇔ パイロット目線）</li>
+				<li><span class="key">T</span>飛びながら<b>現代 ⇔ 昭和初期</b>にタイムスリップ！ 市電や銭湯の煙突、二代目京都駅が見られる (スマホは「時代」ボタン)</li>
 				<li><span class="key">M / P</span>音のON/OFF ／ 一時停止</li>
 				<li><span class="key">✨</span>光の粒が昇る場所は<b>上昇気流</b>。中で旋回すると高度アップ</li>
 				<li><span class="key">⚠</span>地面や建物に降りたらゲーム終了。スピードが落ちすぎると失速！</li>

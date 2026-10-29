@@ -273,7 +273,15 @@ const ROOF_OLD = [[0.75, 0.77, 0.8], [0.65, 0.67, 0.7], [0.82, 0.83, 0.85]];
 
 // detail: 1=近景 (細かく), 0=遠景 (簡略)
 // landmarks: このチャンクにある名所 (ワールド座標 x, z と LANDMARK_SPECS の内容)
-// era: 'now' | 'showa' (昭和初期は高い建物を除き、木造の町並みにする)
+// 昭和初期の建物の高さ (m)。戦後の高い建物は 2〜3 階建ての商家や木造の建物に置き換える。
+// 鉄塔などは建っていなかったので null (建てない)
+export function showaHeight(b) {
+	if (b.type === TYPE.TOWER) return null;
+	if (b.type === TYPE.SACRED || b.height <= 14) return b.height;
+	return 7 + hash(b.ring[0], b.ring[1]) * 6;
+}
+
+// era: 'now' | 'showa' (昭和初期は高い建物を低くし、木造の町並みにする)
 export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, era = 'now') {
 	const B = new Builder();
 	const showa = era === 'showa';
@@ -288,15 +296,15 @@ export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, 
 		const area = Math.abs(ringArea(b.ring));
 		if (!detail && area < 50 && b.type !== TYPE.SACRED) continue;
 		const h = hash(b.ring[0], b.ring[1]);
-		const top = b.base + b.height;
+		const height = showa ? showaHeight(b) : b.height;
+		if (height === null) continue;
+		const top = b.base + height;
 		// 地形は粗い格子なので斜面では建物の足元より低くなることがある。壁を地中深くまで延ばして浮いて見えないようにする
 		const base = b.base - SINK;
 		const g = b.base;
 		const ring = b.ring;
 		let type = b.type;
 		if (showa) {
-			// 戦後の高い建物は建っていない
-			if (type === TYPE.TOWER || (type !== TYPE.SACRED && b.height > 14)) continue;
 			if (type === TYPE.BUILDING || type === TYPE.FACTORY) type = TYPE.HOUSE;
 		}
 
@@ -309,7 +317,7 @@ export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, 
 				// 外形が長方形に近いときだけ勾配屋根 (L字などに掛けると屋根が宙に張り出して見える)
 				if (rect && fill > 0.82 && rect.hv > 1.5) {
 					const pitch = (detail ? 24 : 22) * DEG;
-					const rise = Math.min(rect.hv * Math.tan(pitch), Math.max(1.2, b.height * 0.45));
+					const rise = Math.min(rect.hv * Math.tan(pitch), Math.max(1.2, height * 0.45));
 					const y0 = Math.max(b.base + 2.4, top - rise);
 					B.walls(ring, base, y0, 3.6, 3, CELL.HOUSE_UPPER, wallColor, detail ? CELL.HOUSE_GROUND : null, 3, g);
 					const style = (rect.hu / rect.hv > 1.5 || h > 0.55) ? 'gable' : 'hip';

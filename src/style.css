@@ -395,7 +395,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	background: var(--yellow);
 	box-shadow: 0 4px 0 #d4a514;
 }
-#touch-jet, #touch-cam {
+#touch-jet, #touch-cam, #touch-era {
 	position: absolute;
 	pointer-events: auto;
 	border-radius: 50%;
@@ -405,6 +405,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	color: #fff;
 }
 #touch-jet { right: 24px; bottom: 210px; width: 92px; height: 92px; background: var(--orange); box-shadow: 0 6px 0 #c77300; font-size: 13px; }
+#touch-era { right: 124px; bottom: 300px; width: 60px; height: 60px; background: #b5651d; font-size: 12px; box-shadow: 0 5px 0 #7a4210; }
 #touch-cam { right: 124px; bottom: 226px; width: 60px; height: 60px; background: var(--blue); font-size: 12px; box-shadow: 0 5px 0 #1d5bb8; }
 
 @media (max-width: 720px) {
@@ -425,6 +426,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	.turbo-head small { display: none; }
 	#touch-jet { bottom: 90px; }
 	#touch-cam { bottom: 200px; right: 30px; }
+	#touch-era { bottom: 280px; right: 30px; }
 	.score .v { font-size: 18px; }
 	#hint { font-size: 18px; }
 }
@@ -447,6 +449,21 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 	opacity: 0;
 	background: radial-gradient(ellipse at center, rgba(255, 0, 0, 0) 55%, rgba(255, 30, 30, 0.55) 100%);
 	transition: opacity 0.2s;
+}
+/* タイムスリップの光 */
+#timeslip {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	opacity: 0;
+	background: radial-gradient(circle at center, rgba(255, 250, 230, 1) 0%, rgba(255, 220, 150, 0.9) 45%, rgba(120, 80, 30, 0.6) 100%);
+}
+#timeslip.on { animation: timeslip 1.1s ease-in-out; }
+@keyframes timeslip {
+	0% { opacity: 0; transform: scale(1) rotate(0deg); filter: blur(0); }
+	30% { opacity: 1; transform: scale(1.4) rotate(20deg); }
+	55% { opacity: 1; }
+	100% { opacity: 0; transform: scale(1) rotate(0deg); }
 }
 #result-title.clear { color: var(--orange); font-size: 40px; }
 

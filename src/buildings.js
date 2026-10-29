@@ -4,7 +4,7 @@ import {
 	IcosahedronGeometry, CylinderGeometry,
 } from 'three';
 import { createAtlas } from './atlas.js';
-import { parseChunk, buildChunkGeometry } from './buildingMesh.js';
+import { parseChunk, buildChunkGeometry, showaHeight } from './buildingMesh.js';
 
 const GRID = 50; // 当たり判定用の格子 (m)
 
@@ -53,7 +53,7 @@ export class Buildings {
 	// near: これより近いチャンクは詳細表示、far: これより遠いチャンクは表示しない (m)
 	constructor(scene, baseUrl, { near = 1400, far = 3800, era = 'now' } = {}) {
 		this.far = far;
-		this.release = far + 1000;
+		this.releaseDist = far + 1000;
 		this.era = era;
 		this.landmarks = null; // setLandmarks されるまで建物を作らない
 		this.near = near; // これより近いチャンクは詳細表示 (m)
@@ -102,8 +102,11 @@ export class Buildings {
 		// バッファはワーカーに渡すとコピーされる (元はコリジョン用に残す)
 		const ox = chunk.cx * this.chunkSize, oz = chunk.cz * this.chunkSize, size = this.chunkSize;
 		// チャンクの近くの名所だけ渡す (隣のチャンクにはみ出した建物も見つけられるよう少し広めに)
-		const landmarks = this.landmarks.filter((l) => l.x > ox - 60 && l.x < ox + size + 60 && l.z > oz - 60 && l.z < oz + size + 60);
-		this.worker.postMessage({ id, buffer: chunk.buffer.slice(0), ox, oz, size, detail, landmarks, era: this.era });
+		// 昭和には京都タワーは無い
+		const era = this.era;
+		const landmarks = this.landmarks.filter((l) => l.x > ox - 60 && l.x < ox + size + 60 && l.z > oz - 60 && l.z < oz + size + 60
+			&& !(era === 'showa' && l.kind === 'tower'));
+		this.worker.postMessage({ id, buffer: chunk.buffer.slice(0), ox, oz, size, detail, landmarks, era });
 		this.jobs.set(id, (arrays, sphere) => {
 			this.busy--;
 			chunk.building = false;
@@ -125,9 +128,18 @@ export class Buildings {
 				chunk.mesh.geometry.dispose();
 			}
 			chunk.mesh = mesh;
-			chunk.lod = detail;
+			// 作っている間に時代が切り替わったら、もう一度作り直す
+			chunk.lod = era === this.era ? detail : -1;
 			this.group.add(mesh);
 		});
+	}
+
+	// 飛行中に時代を切り替える: 表示中の建物を近い所から順に作り直す (できるまでは前の建物のまま)
+	setEra(era) {
+		if (era === this.era) return;
+		this.era = era;
+		for (const c of this.chunks.values()) if (c.mesh) c.lod = -1;
+		this.lastUpdate = 0;
 	}
 
 	async load(chunk) {
@@ -234,7 +246,7 @@ export class Buildings {
 			.map((c) => ({ c, d: Math.max(0, Math.hypot(c.x - pos.x, c.z - pos.z) - this.chunkSize * 0.5) }))
 			.sort((a, b) => a.d - b.d);
 		for (const { c, d } of order) {
-			if (d > this.release) {
+			if (d > this.releaseDist) {
 				if (c.buffer || c.mesh) this.release(c);
 				continue;
 			}
@@ -282,9 +294,10 @@ export class Buildings {
 		if (!ids) return false;
 		for (const i of ids) {
 			const b = c.list[i];
-			// 昭和初期モードでは戦後の高い建物は無い
-			if (this.era === 'showa' && (b.type === 5 || (b.type !== 2 && b.height > 14))) continue;
-			if (p.y > b.base + b.height + margin || p.y < b.base - 3) continue;
+			// 昭和初期モードでは戦後の高い建物は低い
+			const height = this.era === 'showa' ? showaHeight(b) : b.height;
+			if (height === null) continue;
+			if (p.y > b.base + height + margin || p.y < b.base - 3) continue;
 			if (p.x < b.minX - margin || p.x > b.maxX + margin || p.z < b.minZ - margin || p.z > b.maxZ + margin) continue;
 			if (pointInRing(p.x, p.z, b.ring)) return true;
 		}

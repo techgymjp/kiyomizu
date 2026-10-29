@@ -14,6 +14,7 @@ import { Sound } from './audio.js';
 import { createSky } from './sky.js';
 import { Fireworks } from './fireworks.js';
 import { People } from './people.js';
+import { Showa } from './showa.js';
 import { buildStage, STAGE, START_POINT } from './stage.js';
 import { Oni } from './oni.js';
 import { buildProps } from './props.js';
@@ -33,12 +34,8 @@ const settings = {
 	era: localStorage.getItem('kiyomizu-era') === 'showa' ? 'showa' : 'now',
 };
 $('opt-era').value = settings.era;
-$('opt-era').addEventListener('change', (e) => {
-	localStorage.setItem('kiyomizu-era', e.target.value);
-	location.reload();
-});
-const showaEra = settings.era === 'showa';
-if (showaEra) document.body.classList.add('showa');
+$('opt-era').addEventListener('change', (e) => setEra(e.target.value));
+if (settings.era === 'showa') document.body.classList.add('showa');
 $('opt-quality').value = settings.quality;
 $('opt-mute').checked = settings.muted;
 $('opt-quality').addEventListener('change', (e) => {
@@ -142,6 +139,8 @@ let buildings = null;
 let balloons = null;
 let thermals = null;
 let people = null;
+let showa = null;
+const perSpot = mobile ? 30 : 60;
 
 const startPos = new Vector3(START_POINT.x, STAGE.floor + 1.3, START_POINT.z);
 const tmpV = new Vector3();
@@ -165,6 +164,7 @@ addEventListener('keydown', (e) => {
 	keys.add(e.code);
 	if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
 	if (e.code === 'KeyC') toggleCamera();
+	if (e.code === 'KeyT') setEra(settings.era === 'showa' ? 'now' : 'showa');
 	if (e.code === 'KeyM') {
 		settings.muted = !settings.muted;
 		$('opt-mute').checked = settings.muted;
@@ -224,6 +224,7 @@ const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in win
 	jetBtn.addEventListener('pointercancel', jetOff);
 	jetBtn.addEventListener('pointerleave', jetOff);
 	$('touch-cam').addEventListener('pointerdown', (e) => { e.preventDefault(); toggleCamera(); });
+	$('touch-era').addEventListener('pointerdown', (e) => { e.preventDefault(); setEra(settings.era === 'showa' ? 'now' : 'showa'); });
 	canvas.addEventListener('pointerdown', () => { if (state === 'ready') jump(); });
 })();
 
@@ -646,6 +647,40 @@ function drawMinimap() {
 	ctx.restore();
 }
 
+// ---------- 今昔の切り替え (T キー / 時代ボタン) ----------
+function setEra(era) {
+	if (era === settings.era) return;
+	settings.era = era;
+	localStorage.setItem('kiyomizu-era', era);
+	$('opt-era').value = era;
+	const showaEra = era === 'showa';
+	sound.setEra(era);
+	if (!buildings || !people) {
+		// 読み込み中は地形・建物の時代だけ合わせる (人などはこのあと作られる)
+		document.body.classList.toggle('showa', showaEra);
+		terrain.setEra(era);
+		buildings?.setEra(era);
+		return;
+	}
+	// タイムスリップの演出: 画面が白く光っている間に入れ替える
+	const fx = $('timeslip');
+	fx.classList.remove('on');
+	void fx.offsetWidth;
+	fx.classList.add('on');
+	sound.timeslip();
+	setTimeout(() => {
+		document.body.classList.toggle('showa', showaEra);
+		terrain.setEra(era);
+		buildings.setEra(era);
+		showa.setVisible(showaEra);
+		people.dispose();
+		people = new People(scene, SPOTS, terrain, buildings, { perSpot, era });
+	}, 350);
+	if (state === 'flying' || state === 'ready') {
+		showMessage(showaEra ? '⏳ 昭和初期へ\nタイムスリップ！' : '⏳ 現代に\nもどってきた！', 1.8);
+	}
+}
+
 // ---------- 飛行中の判定 ----------
 function checkCollision(prev) {
 	worldToGeo(glider.position, geo);
@@ -795,6 +830,7 @@ function loop(now) {
 	mark('fx');
 	const focus = debug.cam ? debug.cam.pos : state === 'title' || state === 'loading' ? startPos : glider.position;
 	if (people && people.update(dt, time, focus) && state === 'flying') sound.cheer();
+	if (showa) showa.update(dt, time);
 	mark('people');
 	sound.update(dt, {
 		speed: glider.speed, jetting: glider.jetting, active: state === 'flying',
@@ -859,7 +895,7 @@ async function init() {
 	});
 	buildStage(scene, (x, z) => terrain.heightAtWorld(x, z));
 	// 名所の建物 (外形が無いときに建てる地面の高さも渡す)。昭和初期には京都タワーは無い
-	const specs = LANDMARK_SPECS.filter((l) => !(showaEra && l.kind === 'tower')).map((l) => {
+	const specs = LANDMARK_SPECS.map((l) => {
 		const p = geoToWorld(l.lat, l.lon, 0);
 		return { ...l, x: p.x, z: p.z, y: terrain.heightAtWorld(p.x, p.z) };
 	});
@@ -869,7 +905,10 @@ async function init() {
 
 	balloons = new Balloons(scene, SPOTS, terrain);
 	thermals = new Thermals(scene, THERMALS, terrain);
-	people = new People(scene, SPOTS, terrain, buildings, { perSpot: mobile ? 30 : 60 });
+	people = new People(scene, SPOTS, terrain, buildings, { perSpot, era: settings.era });
+	// 昭和の町並み (市電・電柱・銭湯の煙突・屋上のアドバルーン・二代目京都駅)
+	showa = new Showa(scene, (x, z) => terrain.heightAtWorld(x, z));
+	showa.setVisible(settings.era === 'showa');
 	// 鬼の持ち場は名所のまわり
 	oni.setWorld(SPOTS.map((sp) => { const p = geoToWorld(sp.lat, sp.lon, 0); p.y = terrain.heightAtWorld(p.x, p.z); return p; }), (x, z) => terrain.heightAtWorld(x, z));
 	flight = newFlight();
@@ -933,5 +972,5 @@ init().catch((e) => {
 window.__kiyomizu = {
 	debug, geoToWorld, glider, terrain, camera, startGame, jump,
 	get state() { return state; }, get flight() { return flight; }, get frames() { return frames; },
-	buildings: () => buildings, balloons: () => balloons, fireworks, sound, oni, Vector3, prof, renderer, people: () => people,
+	buildings: () => buildings, balloons: () => balloons, fireworks, sound, oni, Vector3, prof, renderer, people: () => people, showa: () => showa, setEra,
 };

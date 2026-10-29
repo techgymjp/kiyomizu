@@ -119,7 +119,9 @@ class Chunk {
 export class Terrain {
 	constructor(scene, { era = 'now', mobile = false } = {}) {
 		this.hiRes = mobile ? HI_RES_MOBILE : HI_RES;
+		this.mobile = mobile;
 		this.era = era;
+		this.eraGen = 0; // 時代を切り替えるたびに増やす (切り替え前に頼んだ写真を捨てるため)
 		this.group = new Group();
 		this.group.name = 'terrain';
 		scene.add(this.group);
@@ -261,7 +263,7 @@ export class Terrain {
 	}
 
 	// chunk を覆う z=tz の写真タイルを合成してテクスチャにする
-	async loadPhoto(chunk, tz) {
+	async loadPhoto(chunk, tz, era = this.era) {
 		const n = 2 ** (tz - chunk.z);
 		const prio = () => chunk.center.distanceTo(this.player) * (chunk.z === COARSE_Z ? 3 : 1);
 		const canvas = document.createElement('canvas');
@@ -270,7 +272,7 @@ export class Terrain {
 		ctx.fillStyle = '#8f8c80'; // 写真が無い所
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 		const jobs = [];
-		const showa = this.era === 'showa';
+		const showa = era === 'showa';
 		for (let dx = 0; dx < n; dx++) {
 			for (let dy = 0; dy < n; dy++) {
 				const x = chunk.x * n + dx, y = chunk.y * n + dy;
@@ -303,6 +305,51 @@ export class Terrain {
 		return tex;
 	}
 
+	// 飛行中に時代 (空中写真) を切り替える。基本の写真は近い所から順に差し替え、
+	// 高解像度の写真は捨てて update() で読み直す。PC では両方の時代の基本写真を取っておく
+	setEra(era) {
+		if (era === this.era) return;
+		const old = this.era;
+		this.era = era;
+		const gen = ++this.eraGen;
+		const chunks = [...this.fine.values(), ...this.coarse.values()]
+			.sort((a, b) => a.center.distanceTo(this.player) - b.center.distanceTo(this.player));
+		for (const c of chunks) {
+			if (!c.mesh) continue;
+			c.bases ??= {};
+			if (c.baseTexture) c.bases[old] = c.baseTexture;
+			if (c.hiTexture) {
+				c.hiTexture.dispose();
+				c.hiTexture = null;
+			}
+			c.hiLevel = 0;
+			const apply = (tex) => {
+				c.baseTexture = tex;
+				if (!c.hiTexture) {
+					c.mesh.material.map = tex;
+					c.mesh.material.needsUpdate = true;
+				}
+			};
+			if (c.bases[era]) {
+				apply(c.bases[era]);
+				continue;
+			}
+			c.mesh.material.map = c.bases[old];
+			c.mesh.material.needsUpdate = true;
+			const tz = c.z === FINE_Z ? FINE_Z : COARSE_Z + 1;
+			this.loadPhoto(c, tz, era).then((tex) => {
+				c.bases[era] = tex;
+				if (gen !== this.eraGen) return;
+				apply(tex);
+				// スマホはメモリ節約のため前の時代の写真を捨てる
+				if (this.mobile && c.bases[old] && c.bases[old] !== tex) {
+					c.bases[old].dispose();
+					delete c.bases[old];
+				}
+			}).catch(() => {});
+		}
+	}
+
 	// 毎フレーム呼ぶ: 近くのチャンクほど高解像度の写真に差し替える
 	desiredLevel(d) {
 		for (const [z, dist] of this.hiRes) if (d < dist) return z;
@@ -331,8 +378,13 @@ export class Terrain {
 			if (want > (c.hiLevel || 0) && !c.hiLoading && loading < 3) {
 				c.hiLoading = true;
 				loading++;
+				const gen = this.eraGen;
 				this.loadPhoto(c, want).then((tex) => {
 					c.hiLoading = false;
+					if (gen !== this.eraGen) {
+						tex.dispose();
+						return;
+					}
 					const now = this.desiredLevel(Math.hypot(c.center.x - this.player.x, c.center.z - this.player.z) - HI_RES_HYSTERESIS);
 					if (now < want) {
 						tex.dispose();
@@ -366,8 +418,13 @@ export class Terrain {
 			const d = Math.max(0, Math.abs(c.center.x - playerPos.x) - half) + Math.max(0, Math.abs(c.center.z - playerPos.z) - half);
 			if (d < 1500 && !c.hiLevel && !c.hiLoading) {
 				c.hiLoading = true;
+				const gen = this.eraGen;
 				this.loadPhoto(c, COARSE_Z + 3).then((tex) => {
 					c.hiLoading = false;
+					if (gen !== this.eraGen) {
+						tex.dispose();
+						return;
+					}
 					c.hiTexture = tex;
 					c.hiLevel = COARSE_Z + 3;
 					c.mesh.material.map = tex;

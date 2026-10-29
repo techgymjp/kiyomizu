@@ -76,11 +76,88 @@ const SONGS = {
 	},
 };
 
+// ---------- 曲 (昭和の流行歌風) ----------
+// ヨナ抜き短音階 (ラ シ ド ミ ファ) のメロディを、クラリネット・アコーディオン・ウッドベース・ブラシのドラムで。
+// ズン・チャッ (ベースが表拍、アコーディオンが裏拍) のフォックストロット調
+// 打楽器: B=バスドラム S=ブラシのスネア H=ハイハット
+const SHOWA_CHORDS = {
+	Am: { notes: ['A3', 'C4', 'E4'], root: 'A2', fifth: 'E2' },
+	Dm: { notes: ['D4', 'F4', 'A4'], root: 'D2', fifth: 'A2' },
+	E7: { notes: ['G#3', 'B3', 'D4', 'E4'], root: 'E2', fifth: 'B2' },
+	C: { notes: ['C4', 'E4', 'G4'], root: 'C3', fifth: 'G2' },
+	F: { notes: ['A3', 'C4', 'F4'], root: 'F2', fifth: 'C3' },
+	G: { notes: ['G3', 'B3', 'D4'], root: 'G2', fifth: 'D3' },
+};
+// 1小節4拍ずつのコード進行から、ベースとアコーディオンの伴奏を作る
+function oompah(chords, accGain, bassGain) {
+	const bass = [], acc = [];
+	for (const c of chords) {
+		const ch = SHOWA_CHORDS[c];
+		bass.push([ch.root, 1], [null, 1], [ch.fifth, 1], [null, 1]);
+		acc.push([null, 1], [c, 1], [null, 1], [c, 1]);
+	}
+	return [
+		{ wave: 'bass', gain: bassGain, notes: bass },
+		{ wave: 'accordion', gain: accGain, notes: acc },
+	];
+}
+const SHOWA_SONGS = {
+	title: {
+		bpm: 96, loop: true,
+		tracks: [
+			{ wave: 'clarinet', gain: 0.1, notes: seq('A4:1 B4:1 C5:1 E5:1 F5:2 E5:2 F5:1 E5:1 C5:1 B4:1 C5:1 B4:1 A4:2 '
+				+ 'B4:1 C5:1 E5:2 F5:1.5 E5:.5 B4:2 C5:1 B4:1 G#4:1 B4:1 A4:4') },
+			...oompah(['Am', 'Am', 'Dm', 'Am', 'E7', 'E7', 'Am', 'Am'], 0.035, 0.16),
+			{ wave: 'drums', gain: 0.35, notes: seq('B:1 S:1 B:1 S:1 '.repeat(8)) },
+		],
+	},
+	start: {
+		bpm: 120, loop: false,
+		tracks: [
+			{ wave: 'clarinet', gain: 0.12, notes: seq('E5:.5 F5:.5 E5:1 B4:1 G#4:1 A4:4') },
+			{ wave: 'accordion', gain: 0.045, notes: seq('Am:2 E7:2 Am:4') },
+			{ wave: 'bass', gain: 0.18, notes: seq('A2:2 E2:2 A2:4') },
+			{ wave: 'drums', gain: 0.45, notes: seq('B:.5 B:.5 S:1 B:1 S:1 B:1 S:.5 S:.5 B:2') },
+		],
+	},
+	flight: {
+		bpm: 132, loop: true,
+		tracks: [
+			{ wave: 'clarinet', gain: 0.1, notes: seq(
+				'E5:1.5 F5:.5 E5:1 C5:1 B4:1 C5:.5 B4:.5 A4:2 A4:1 C5:1 F5:1.5 E5:.5 E5:3 -:1 '
+				+ 'E5:1.5 F5:.5 E5:1 B4:1 G#4:1 B4:1 E5:1.5 F5:.5 E5:1 C5:1 B4:1 C5:1 A4:3 -:1 '
+				+ 'F5:1.5 E5:.5 F5:1 A5:1 A5:1 F5:1 E5:2 E5:1.5 C5:.5 E5:1 F5:1 E5:3 -:1 '
+				+ 'B4:1 C5:1 B4:1 G#4:1 B4:1.5 C5:.5 B4:1 E5:1 C5:1 B4:1 A4:1 B4:1 A4:3 -:1',
+			) },
+			...oompah(['Am', 'Am', 'Dm', 'Am', 'E7', 'E7', 'Am', 'Am', 'Dm', 'Dm', 'Am', 'Am', 'E7', 'E7', 'Am', 'Am'], 0.032, 0.16),
+			{ wave: 'drums', gain: 0.32, notes: seq('B:1 S:1 B:1 S:.5 H:.5 '.repeat(16)) },
+		],
+	},
+	gameover: {
+		bpm: 72, loop: false,
+		tracks: [
+			{ wave: 'clarinet', gain: 0.11, notes: seq('F5:2 E5:1 C5:1 B4:2 G#4:2 A4:4') },
+			{ wave: 'accordion', gain: 0.04, notes: seq('Dm:4 E7:4 Am:4') },
+			{ wave: 'bass', gain: 0.16, notes: seq('D2:4 E2:4 A2:4') },
+		],
+	},
+	ranking: {
+		bpm: 150, loop: false,
+		tracks: [
+			{ wave: 'clarinet', gain: 0.1, notes: seq('E5:1 G5:1 A5:1 G5:1 E5:1 D5:1 C5:2 A5:1 A5:1 G5:1 A5:1 G5:3 -:1 '
+				+ 'D5:1 E5:1 G5:1 E5:1 D5:1 C5:.5 D5:.5 E5:2 G5:1 E5:1 D5:1 E5:1 C6:3 -:1') },
+			...oompah(['C', 'C', 'F', 'C', 'G', 'G', 'C', 'C'], 0.035, 0.16),
+			{ wave: 'drums', gain: 0.4, notes: seq('B:1 S:1 B:1 S:.5 S:.5 '.repeat(7) + 'S:.5 S:.5 S:.5 S:.5 B:2') },
+		],
+	},
+};
+
 export class Sound {
 	constructor() {
 		this.ctx = null;
 		this.muted = false;
 		this.song = null;
+		this.era = 'now';
 		this.varioTimer = 0;
 		this.warnTimer = 0;
 	}
@@ -197,7 +274,7 @@ export class Sound {
 			return;
 		}
 		this.stopSong();
-		const song = SONGS[name];
+		const song = (this.era === 'showa' && SHOWA_SONGS[name]) || SONGS[name];
 		const beat = 60 / song.bpm;
 		const length = Math.max(...song.tracks.map((tr) => tr.notes.reduce((a, n) => a + n[1], 0))) * beat;
 		const state = { name, gain: this.ctx.createGain() };
@@ -240,6 +317,104 @@ export class Sound {
 			case 'sho': return this.sho(SHO_CHORDS[n], t, dur, gain, bus);
 			case 'hichiriki': return this.reed(freq(n), t, dur, gain, bus);
 			case 'ryuteki': return this.flute(freq(n), t, dur, gain, bus);
+			case 'accordion': return this.accordion(SHOWA_CHORDS[n].notes, t, dur, gain, bus);
+			case 'clarinet': return this.clarinet(freq(n), t, dur, gain, bus);
+			case 'bass': return this.bass(freq(n), t, dur, gain, bus);
+			case 'drums': return this.drums(n, t, gain, bus);
+		}
+	}
+
+	// 時代を切り替える (BGM も切り替わる)
+	setEra(era) {
+		this.era = era;
+		const name = this.song?.name ?? this.pendingSong;
+		if (name && this.ctx) this.playSong(name);
+	}
+
+	// アコーディオン: 少しずらした2枚のリードで、ミュゼットのうなり
+	accordion(notes, t, dur, gain, bus) {
+		const ctx = this.ctx;
+		const end = t + dur * 0.85;
+		const g = ctx.createGain();
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.linearRampToValueAtTime(gain, t + 0.03);
+		g.gain.setValueAtTime(gain, Math.max(t + 0.04, end - 0.06));
+		g.gain.linearRampToValueAtTime(0.0001, end);
+		const lp = ctx.createBiquadFilter();
+		lp.type = 'lowpass';
+		lp.frequency.value = 2200;
+		g.connect(lp).connect(bus);
+		for (const name of notes) {
+			for (const det of [-9, 9]) {
+				const o = ctx.createOscillator();
+				o.type = 'sawtooth';
+				o.frequency.value = freq(name);
+				o.detune.value = det;
+				o.connect(g);
+				o.start(t);
+				o.stop(end + 0.05);
+			}
+		}
+	}
+
+	// クラリネット: 奇数倍音の多い柔らかい音。のばすと少しビブラート
+	clarinet(f, t, dur, gain, bus) {
+		const ctx = this.ctx;
+		const o = ctx.createOscillator();
+		o.type = 'square';
+		o.frequency.value = f;
+		const vib = ctx.createOscillator();
+		vib.frequency.value = 5.5;
+		const vg = ctx.createGain();
+		vg.gain.setValueAtTime(0, t);
+		vg.gain.linearRampToValueAtTime(f * 0.008, t + Math.max(0.3, dur));
+		vib.connect(vg).connect(o.frequency);
+		const lp = ctx.createBiquadFilter();
+		lp.type = 'lowpass';
+		lp.frequency.value = 1700;
+		lp.Q.value = 0.8;
+		const g = ctx.createGain();
+		const end = t + dur * 0.95;
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.linearRampToValueAtTime(gain, t + 0.05);
+		g.gain.setValueAtTime(gain * 0.9, Math.max(t + 0.06, end - 0.08));
+		g.gain.linearRampToValueAtTime(0.0001, end);
+		o.connect(lp).connect(g).connect(bus);
+		o.start(t);
+		vib.start(t);
+		o.stop(end + 0.05);
+		vib.stop(end + 0.05);
+	}
+
+	// ウッドベース: はじいて減衰する低音
+	bass(f, t, dur, gain, bus) {
+		const ctx = this.ctx;
+		const g = ctx.createGain();
+		const end = t + Math.min(dur, 0.7);
+		g.gain.setValueAtTime(0.0001, t);
+		g.gain.linearRampToValueAtTime(gain, t + 0.01);
+		g.gain.exponentialRampToValueAtTime(0.0008, end);
+		g.connect(bus);
+		for (const [type, mul, k] of [['triangle', 1, 1], ['sine', 2, 0.35]]) {
+			const o = ctx.createOscillator();
+			o.type = type;
+			o.frequency.value = f * mul;
+			const og = ctx.createGain();
+			og.gain.value = k;
+			o.connect(og).connect(g);
+			o.start(t);
+			o.stop(end + 0.05);
+		}
+	}
+
+	// ブラシのドラム
+	drums(n, t, gain, bus) {
+		if (n === 'B') {
+			this.tone(110, t, 0.25, { slideTo: 50, gain: gain * 0.9, bus });
+		} else if (n === 'S') {
+			this.burstNoise(t, 0.18, { type: 'bandpass', f: 2600, q: 0.7, gain: gain * 0.35, decay: 0.05, bus });
+		} else if (n === 'H') {
+			this.burstNoise(t, 0.06, { type: 'highpass', f: 7000, gain: gain * 0.25, decay: 0.015, bus });
 		}
 	}
 
@@ -365,6 +540,16 @@ export class Sound {
 		const t = this.ctx.currentTime;
 		this.tone(880, t, 0.08, { wave: 'square', gain: 0.08 });
 		this.tone(1320, t + 0.04, 0.08, { wave: 'square', gain: 0.06 });
+	}
+
+	// タイムスリップ: うずを巻いて上下する音と、きらきらしたチャイム
+	timeslip() {
+		if (!this.ctx) return;
+		const t = this.ctx.currentTime;
+		this.burstNoise(t, 1.2, { type: 'bandpass', f: 300, slideTo: 4000, q: 4, gain: 0.35, decay: 0.5 });
+		this.tone(220, t, 0.6, { wave: 'triangle', slideTo: 1760, gain: 0.12 });
+		this.tone(1760, t + 0.55, 0.7, { wave: 'triangle', slideTo: 330, gain: 0.08 });
+		[1568, 2093, 2637, 3136, 2637, 2093].forEach((f, i) => this.tone(f, t + 0.1 + i * 0.08, 0.5, { gain: 0.05 }));
 	}
 
 	jump() {
