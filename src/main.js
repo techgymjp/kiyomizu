@@ -582,21 +582,23 @@ function drawMinimap() {
 	ctx.save();
 	ctx.translate(W / 2, W / 2);
 	ctx.rotate(-glider.yaw); // 進行方向を上に
-	ctx.scale(0.6, 0.6);
+	// スマホは表示が小さいので地図の中身を拡大 (印の大きさはそのまま)
+	const zoom = mobile ? 1.15 : 0.6, ms = 0.6 / zoom;
+	ctx.scale(zoom, zoom);
 	ctx.translate(-me.x, -me.y);
 	ctx.drawImage(mapCanvas, 0, 0);
 	for (const it of balloons.items) {
 		const p = toMap(it.spot.lat, it.spot.lon);
 		ctx.beginPath();
-		ctx.arc(p.x, p.y, it.popped ? 5 : 9, 0, Math.PI * 2);
+		ctx.arc(p.x, p.y, (it.popped ? 5 : 9) * ms, 0, Math.PI * 2);
 		ctx.fillStyle = it.popped ? 'rgba(140,140,140,0.7)' : '#ff4b5c';
 		ctx.fill();
-		ctx.lineWidth = 3;
+		ctx.lineWidth = 3 * ms;
 		ctx.strokeStyle = '#fff';
 		ctx.stroke();
 	}
 	// 鬼
-	ctx.font = '28px sans-serif';
+	ctx.font = `${Math.round(28 * ms)}px sans-serif`;
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
 	for (const o of oni.list) {
@@ -608,7 +610,7 @@ function drawMinimap() {
 		if (o.state === 'chase') {
 			// 追いかけてくる鬼は赤い丸で囲む
 			ctx.beginPath();
-			ctx.arc(0, 0, 20, 0, Math.PI * 2);
+			ctx.arc(0, 0, 20 * ms, 0, Math.PI * 2);
 			ctx.fillStyle = 'rgba(255,40,40,0.55)';
 			ctx.fill();
 		}
