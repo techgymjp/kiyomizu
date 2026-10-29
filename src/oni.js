@@ -6,8 +6,8 @@ import {
 
 export const CATCH_RADIUS = 7;
 const FIRST_SPAWN = 5; // 秒
-const NEXT_SPAWN = 70; // 秒ごとに鬼が増える
-const MAX_ONI = 14;
+const CP_PER_ONI = 3; // アドバルーンをこの数割るごとに鬼が1匹増える
+const MAX_ONI = 24; // 10匹 + 42か所 / 3
 // 最初に出てくる鬼の数。まわり中にランダムに配置する (距離もまちまち)
 const FIRST_COUNT = 10;
 const FIRST_DIST = [300, 1300];
@@ -167,26 +167,26 @@ export class Oni {
 		return oni;
 	}
 
+	// アドバルーンを割ったとき: 3個ごとに後ろから鬼が1匹増える。増えたらその鬼を返す
+	addForCheckpoint(count, glider) {
+		if (count % CP_PER_ONI !== 0 || !this.list.length || this.list.length >= MAX_ONI) return null;
+		const k = this.list.length;
+		return this.spawn(glider.position, glider.yaw, Math.PI + (k % 2 ? 1 : -1) * (0.3 + Math.random() * 0.6));
+	}
+
 	// 戻り値: { spawned, nearest(距離), caught }
 	update(dt, glider, active) {
 		const out = { spawned: null, nearest: Infinity, caught: false, nearestOni: null };
 		if (active) {
 			this.time += dt;
-			if (this.time >= this.nextSpawn && this.list.length < MAX_ONI) {
-				if (!this.list.length) {
-					out.spawned = [];
-					for (let i = 0; i < FIRST_COUNT; i++) {
-						// 方向は均等にばらしつつ少し揺らす (どちらに逃げても鬼がいる)
-						const dir = (i / FIRST_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-						const dist = FIRST_DIST[0] + Math.random() * (FIRST_DIST[1] - FIRST_DIST[0]);
-						out.spawned.push(this.spawn(glider.position, glider.yaw, dir, dist, -20 + Math.random() * 120));
-					}
-				} else {
-					// 追加の鬼は後ろの左右から交互に
-					const k = this.list.length;
-					out.spawned = [this.spawn(glider.position, glider.yaw, Math.PI + (k % 2 ? 1 : -1) * (0.3 + 0.2 * k))];
+			if (this.time >= this.nextSpawn && !this.list.length) {
+				out.spawned = [];
+				for (let i = 0; i < FIRST_COUNT; i++) {
+					// 方向は均等にばらしつつ少し揺らす (どちらに逃げても鬼がいる)
+					const dir = (i / FIRST_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+					const dist = FIRST_DIST[0] + Math.random() * (FIRST_DIST[1] - FIRST_DIST[0]);
+					out.spawned.push(this.spawn(glider.position, glider.yaw, dir, dist, -20 + Math.random() * 120));
 				}
-				this.nextSpawn += NEXT_SPAWN;
 			}
 		}
 		const speed = Math.min(27, 15 + this.time * 0.04); // だんだん速くなる

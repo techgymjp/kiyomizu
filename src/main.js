@@ -652,7 +652,9 @@ function onPop(it) {
 		endGame('🏯 全制覇！ 🏯', '京都の名所をすべてめぐりました！ 鬼からも逃げ切った！', true);
 		return;
 	}
-	showMessage(`🎆 チェックポイント！ 🎆\n${it.spot.name}\nターボ +1 🚀`, 2.6);
+	const more = oni.addForCheckpoint(flight.checkpoints.length, glider);
+	if (more) setTimeout(() => sound.oniLaugh(), 900);
+	showMessage(`🎆 チェックポイント！ 🎆\n${it.spot.name}\nターボ +1 🚀${more ? `\n👹 鬼が増えた！ (${oni.list.length}匹)` : ''}`, 2.6);
 }
 
 // 鬼ごっこ: 鬼の動きと、近づいたときの演出
@@ -662,7 +664,7 @@ function updateOni(dt, active) {
 	if (!active) return;
 	if (r.spawned) {
 		sound.oniLaugh();
-		showMessage(r.spawned.length > 1 ? `👹 鬼が${r.spawned.length}匹来た！\nまわりは鬼だらけ！` : `👹 鬼が増えた！ (${oni.list.length}匹)`, 2.4);
+		showMessage(`👹 鬼が${r.spawned.length}匹来た！\nまわりは鬼だらけ！`, 2.4);
 	}
 	flight.oniDist = r.nearest;
 	// 近いほど速くなる心臓の音
