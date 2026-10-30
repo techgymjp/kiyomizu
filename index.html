@@ -21,10 +21,10 @@
 				<div class="sub"><span id="hud-dist">0.00</span> km ・ <span id="hud-time">0:00</span></div>
 			</div>
 			<div class="pill gauges">
-				<div class="g"><span class="k">高さ</span><span class="v" id="hud-agl">0</span><span class="u">m</span></div>
-				<div class="g"><span class="k">はやさ</span><span class="v" id="hud-speed">0</span><span class="u">km/h</span></div>
-				<div class="g"><span class="k">上昇</span><span class="v" id="hud-vario">0</span><span class="u">m/s</span></div>
-				<div class="alt">標高 <span id="hud-alt">0</span>m</div>
+				<div class="g"><span class="k" data-i18n="height">高さ</span><span class="v" id="hud-agl">0</span><span class="u">m</span></div>
+				<div class="g"><span class="k" data-i18n="speed">はやさ</span><span class="v" id="hud-speed">0</span><span class="u">km/h</span></div>
+				<div class="g"><span class="k" data-i18n="climb">上昇</span><span class="v" id="hud-vario">0</span><span class="u">m/s</span></div>
+				<div class="alt"><span data-i18n="alt">標高</span> <span id="hud-alt">0</span>m</div>
 			</div>
 		</div>
 		<div id="target" class="pill">
@@ -34,27 +34,27 @@
 				<div id="target-info">-</div>
 			</div>
 		</div>
-		<div id="wipe"><span class="wipe-label">● 前方カメラ</span></div>
-		<div id="oni" class="pill hidden">👹 鬼 <span id="oni-dist">-</span></div>
+		<div id="wipe"><span class="wipe-label" data-i18n="wipe">● 前方カメラ</span></div>
+		<div id="oni" class="pill hidden"><span data-i18n="oni">👹 鬼</span> <span id="oni-dist">-</span></div>
 		<div id="danger"></div>
 		<div id="timeslip"></div>
 		<div id="turbo" class="pill">
-			<div class="turbo-head"><span class="turbo-title">🚀 ターボ</span><span id="turbo-count">×0</span><small>Space / Shift で噴射 ・ T で時代</small></div>
+			<div class="turbo-head"><span class="turbo-title" data-i18n="turbo">🚀 ターボ</span><span id="turbo-count">×0</span><small data-i18n="turboKeys">Space / Shift で噴射 ・ T で時代</small></div>
 			<div class="turbo-bar"><div id="turbo-fill"></div></div>
 		</div>
 		<canvas id="minimap" width="300" height="300"></canvas>
-		<div id="stall" class="hidden">⚠ 失速！ ↓で機首を下げて！</div>
+		<div id="stall" class="hidden" data-i18n="stall">⚠ 失速！ ↓で機首を下げて！</div>
 		<div id="message"></div>
 		<div id="hint"></div>
-		<div class="credit">地形・空中写真: 国土地理院 ／ 建物: 国土交通省 Project PLATEAU をもとに作成</div>
+		<div class="credit" data-i18n="creditHud">地形・空中写真: 国土地理院 ／ 建物: 国土交通省 Project PLATEAU をもとに作成</div>
 	</div>
 
 	<!-- タッチ操作 -->
 	<div id="touch" class="hidden">
 		<div id="stick"><div id="stick-knob"></div></div>
-		<button id="touch-jet">🚀<br />ターボ</button>
-		<button id="touch-cam">視点</button>
-		<button id="touch-era">時代</button>
+		<button id="touch-jet" data-i18n="touchJet">🚀<br />ターボ</button>
+		<button id="touch-cam" data-i18n="touchCam">視点</button>
+		<button id="touch-era" data-i18n="touchEra">時代</button>
 	</div>
 
 	<!-- タイトル -->
@@ -62,37 +62,43 @@
 		<div class="floaters" aria-hidden="true"><span>🍁</span><span>🎈</span><span>🍂</span><span>🎈</span><span>🍁</span><span>🎆</span></div>
 		<div class="card title-card">
 			<h1>
-				<span class="l1">清水の舞台から</span>
-				<span class="l2"><b>飛</b><b>び</b><b>降</b><b>り</b><b>る</b><b>つ</b><b>も</b><b>り</b></span>
+				<span class="l1" data-i18n="l1">清水の舞台から</span>
+				<span class="l2" data-i18n="l2"><b>飛</b><b>び</b><b>降</b><b>り</b><b>る</b><b>つ</b><b>も</b><b>り</b></span>
 			</h1>
-			<p class="lead">ハングライダーで清水の舞台からダイブ！<br />紅葉まっさかりの京都の空で<b>鬼ごっこ</b> 👹<br />鬼から逃げながら、名所のアドバルーンを全部割れ！🎈</p>
+			<p class="lead" data-i18n="lead">ハングライダーで清水の舞台からダイブ！<br />紅葉まっさかりの京都の空で<b>鬼ごっこ</b> 👹<br />鬼から逃げながら、名所のアドバルーンを全部割れ！🎈</p>
 			<div id="loading">
 				<div class="bar"><div id="load-fill"></div></div>
-				<div id="load-text">京都の地形を読み込み中…</div>
+				<div id="load-text" data-i18n="loading">京都の地形を読み込み中…</div>
 			</div>
 			<div id="title-buttons" class="hidden">
-				<button id="btn-start" class="btn big">🪂 飛び降りる！</button>
+				<button id="btn-start" class="btn big" data-i18n="start">🪂 飛び降りる！</button>
 				<div class="row-btns">
-					<button id="btn-ranking" class="btn sub">🏆 ランキング</button>
-					<button id="btn-howto" class="btn sub">❓ 遊び方</button>
+					<button id="btn-ranking" class="btn sub" data-i18n="ranking">🏆 ランキング</button>
+					<button id="btn-howto" class="btn sub" data-i18n="howto">❓ 遊び方</button>
 				</div>
 			</div>
 			<div class="settings">
-				<label>画質
+				<label><span data-i18n="quality">画質</span>
 					<select id="opt-quality">
-						<option value="low">かるい (影なし・おすすめ)</option>
-						<option value="high">きれい (影あり・重い)</option>
+						<option value="low" data-i18n="qLow">かるい (影なし・おすすめ)</option>
+						<option value="high" data-i18n="qHigh">きれい (影あり・重い)</option>
 					</select>
 				</label>
-				<label>時代
+				<label><span data-i18n="era">時代</span>
 					<select id="opt-era">
-						<option value="now">現代</option>
-						<option value="showa">昭和初期</option>
+						<option value="now" data-i18n="eraNow">現代</option>
+						<option value="showa" data-i18n="eraShowa">昭和初期</option>
 					</select>
 				</label>
-				<label><input type="checkbox" id="opt-mute" /> 音を消す</label>
+				<label><span data-i18n="lang">言語</span>
+						<select id="opt-lang">
+							<option value="ja">日本語</option>
+							<option value="en">English</option>
+						</select>
+					</label>
+					<label><input type="checkbox" id="opt-mute" /> <span data-i18n="mute">音を消す</span></label>
 			</div>
-			<p class="credit-line">
+			<p class="credit-line" data-i18n="credit">
 				地形・空中写真: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル</a>
 				／ 建物: <a href="https://www.mlit.go.jp/plateau/" target="_blank" rel="noopener">国土交通省 Project PLATEAU</a>（京都市 3D都市モデル）をもとに作成
 			</p>
@@ -101,62 +107,62 @@
 
 	<div id="howto" class="screen hidden">
 		<div class="card">
-			<h2>❓ 遊び方</h2>
-			<ul class="howto">
-				<li><span class="key">👹</span><b>鬼ごっこ</b>！ 鬼が20匹、京都の名所のまわりを徘徊している。近づくと見つかって追いかけてくる。捕まったら負け。アドバルーンを1個割るごとに鬼が1匹増え、時間がたつと速くなる</li>
-				<li><span class="key">🎯</span>名所のアドバルーンを割ってチェックポイント通過！ 花火があがって<b>ターボ +1</b>。全部割ったらクリア</li>
-				<li><span class="key">↑ ↓</span>↑で上昇、↓で下降（スピードアップ）</li>
-				<li><span class="key">← →</span>左右に旋回</li>
-				<li><span class="key">Space</span>ターボ噴射（押している間だけ）。最初は<b>1つ</b>。アドバルーンで増えます</li>
-				<li><span class="key">C</span>視点切替（後ろから ⇔ パイロット目線）</li>
-				<li><span class="key">T</span>飛びながら<b>現代 ⇔ 昭和初期</b>にタイムスリップ！ 市電や銭湯の煙突、二代目京都駅が見られる (スマホは「時代」ボタン)</li>
-				<li><span class="key">M / P</span>音のON/OFF ／ 一時停止</li>
-				<li><span class="key">✨</span>光の粒が昇る場所は<b>上昇気流</b>。中で旋回すると高度アップ</li>
-				<li><span class="key">⚠</span>地面や建物に降りたらゲーム終了。スピードが落ちすぎると失速！</li>
-				<li><span class="key">📱</span>スマホは左下スティックで操縦、右のボタンでターボ</li>
+			<h2 data-i18n="howtoTitle">❓ 遊び方</h2>
+			<ul class="howto" data-i18n="howtoList">
+				<li><span class="key">👹</span><span><b>鬼ごっこ</b>！ 鬼が20匹、京都の名所のまわりを徘徊している。近づくと見つかって追いかけてくる。捕まったら負け。アドバルーンを1個割るごとに鬼が1匹増え、時間がたつと速くなる</span></li>
+				<li><span class="key">🎯</span><span>名所のアドバルーンを割ってチェックポイント通過！ 花火があがって<b>ターボ +1</b>。全部割ったらクリア</span></li>
+				<li><span class="key">↑ ↓</span><span>↑で上昇、↓で下降（スピードアップ）</span></li>
+				<li><span class="key">← →</span><span>左右に旋回</span></li>
+				<li><span class="key">Space</span><span>ターボ噴射（押している間だけ）。最初は<b>1つ</b>。アドバルーンで増えます</span></li>
+				<li><span class="key">C</span><span>視点切替（後ろから ⇔ パイロット目線）</span></li>
+				<li><span class="key">T</span><span>飛びながら<b>現代 ⇔ 昭和初期</b>にタイムスリップ！ 市電や銭湯の煙突、二代目京都駅が見られる (スマホは「時代」ボタン)</span></li>
+				<li><span class="key">M / P</span><span>音のON/OFF ／ 一時停止</span></li>
+				<li><span class="key">✨</span><span>光の粒が昇る場所は<b>上昇気流</b>。中で旋回すると高度アップ</span></li>
+				<li><span class="key">⚠</span><span>地面や建物に降りたらゲーム終了。スピードが落ちすぎると失速！</span></li>
+				<li><span class="key">📱</span><span>スマホは左下スティックで操縦、右のボタンでターボ</span></li>
 			</ul>
-			<button class="close btn big">OK！</button>
+			<button class="close btn big" data-i18n="ok">OK！</button>
 		</div>
 	</div>
 
 	<div id="ranking" class="screen hidden">
 		<div class="card">
-			<h2>🏆 ランキング <small>(この端末の記録)</small></h2>
+			<h2 data-i18n="rankingTitle">🏆 ランキング <small>(この端末の記録)</small></h2>
 			<table>
-				<thead><tr><th>#</th><th>名前</th><th>🎈</th><th>距離</th><th>日付</th></tr></thead>
+				<thead data-i18n="rankingHead"><tr><th>#</th><th>名前</th><th>🎈</th><th>距離</th><th>日付</th></tr></thead>
 				<tbody id="ranking-body"></tbody>
 			</table>
-			<button class="close btn big">とじる</button>
+			<button class="close btn big" data-i18n="close">とじる</button>
 		</div>
 	</div>
 
 	<div id="result" class="screen hidden">
 		<div class="card result-card">
-			<div id="rank-banner" class="hidden">🎉 ランキング <span id="rank-no">1</span> 位！ 🎉</div>
+			<div id="rank-banner" class="hidden" data-i18n="rankBanner">🎉 ランキング <span id="rank-no">1</span> 位！ 🎉</div>
 			<h2 id="result-title">着陸！</h2>
 			<p id="result-reason"></p>
 			<div class="score">
-				<div class="s1"><span class="k">🎈 チェックポイント</span><span class="v" id="result-cp">0</span></div>
-				<div class="s2"><span class="k">📏 飛行距離</span><span class="v" id="result-dist">0</span></div>
-				<div class="s3"><span class="k">⏱ 飛行時間</span><span class="v" id="result-time">0</span></div>
+				<div class="s1"><span class="k" data-i18n="cp">🎈 チェックポイント</span><span class="v" id="result-cp">0</span></div>
+				<div class="s2"><span class="k" data-i18n="dist">📏 飛行距離</span><span class="v" id="result-dist">0</span></div>
+				<div class="s3"><span class="k" data-i18n="time">⏱ 飛行時間</span><span class="v" id="result-time">0</span></div>
 			</div>
 			<p id="result-spots"></p>
 			<div class="name-row">
-				<input id="result-name" maxlength="12" placeholder="なまえ" />
+				<input id="result-name" maxlength="12" placeholder="なまえ" data-i18n-placeholder />
 				<button id="btn-save" class="btn sub">記録する</button>
 			</div>
 			<div class="buttons">
-				<button id="btn-retry" class="btn big">🪂 もう一度飛び降りる</button>
+				<button id="btn-retry" class="btn big" data-i18n="retry">🪂 もう一度飛び降りる</button>
 				<div class="row-btns">
-					<button id="btn-share" class="btn sub">𝕏 シェア</button>
-					<button id="btn-to-title" class="btn sub">🏠 タイトル</button>
+					<button id="btn-share" class="btn sub" data-i18n="share">𝕏 シェア</button>
+					<button id="btn-to-title" class="btn sub" data-i18n="toTitle">🏠 タイトル</button>
 				</div>
 			</div>
 		</div>
 	</div>
 
 	<div id="pause" class="screen hidden">
-		<div class="card"><h2>⏸ 一時停止</h2><button id="btn-resume" class="btn big">再開 (P)</button></div>
+		<div class="card"><h2 data-i18n="pause">⏸ 一時停止</h2><button id="btn-resume" class="btn big" data-i18n="resume">再開 (P)</button></div>
 	</div>
 
 	<script type="module" src="./src/main.js"></script>

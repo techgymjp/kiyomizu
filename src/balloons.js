@@ -6,6 +6,7 @@ import {
 	AdditiveBlending, Color,
 } from 'three';
 import { geoToWorld } from './geo.js';
+import { spotName } from './i18n.js';
 
 const BALLOON_RADIUS = 7;
 export const HIT_RADIUS = 11;
@@ -39,6 +40,9 @@ function labelTexture(text) {
 	canvas.height = 128;
 	const ctx = canvas.getContext('2d');
 	ctx.font = 'bold 52px sans-serif';
+	// 長い名前 (英語など) は幅に収まるよう文字を小さくする
+	const w = ctx.measureText(text).width;
+	if (w > 480) ctx.font = `bold ${Math.floor(52 * 480 / w)}px sans-serif`;
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
 	ctx.lineWidth = 10;
@@ -88,7 +92,7 @@ export class Balloons {
 			g.add(new Line(rope, new LineBasicMaterial({ color: 0x333333 })));
 
 			// 遠くからでも見えるラベル
-			const label = new Sprite(new SpriteMaterial({ map: labelTexture(`🎈 ${spot.name}`), transparent: true, depthWrite: false }));
+			const label = new Sprite(new SpriteMaterial({ map: labelTexture(`🎈 ${spotName(spot)}`), transparent: true, depthWrite: false }));
 			label.scale.set(0.16, 0.04, 1);
 			label.material.sizeAttenuation = false;
 			label.position.y = BALLOON_RADIUS + 6;

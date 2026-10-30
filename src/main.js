@@ -15,6 +15,7 @@ import { createSky } from './sky.js';
 import { Fireworks } from './fireworks.js';
 import { People } from './people.js';
 import { Showa } from './showa.js';
+import { lang, L, spotName, applyStatic } from './i18n.js';
 import { buildStage, STAGE, START_POINT } from './stage.js';
 import { Oni } from './oni.js';
 import { buildProps } from './props.js';
@@ -33,6 +34,12 @@ const settings = {
 	muted: localStorage.getItem('kiyomizu-muted') === '1',
 	era: localStorage.getItem('kiyomizu-era') === 'showa' ? 'showa' : 'now',
 };
+applyStatic();
+$('opt-lang').value = lang;
+$('opt-lang').addEventListener('change', (e) => {
+	localStorage.setItem('kiyomizu-lang', e.target.value);
+	location.reload();
+});
 $('opt-era').value = settings.era;
 $('opt-era').addEventListener('change', (e) => setEra(e.target.value));
 if (settings.era === 'showa') document.body.classList.add('showa');
@@ -327,8 +334,8 @@ function startGame() {
 	chaseInit = false;
 	wipePos.copy(glider.position);
 	sound.playSong('start');
-	showMessage('🎌 清水の舞台 🎌\nターボ ×1 で出発！', 2.6);
-	$('hint').textContent = isTouch ? '画面をタップで飛び降りる！' : 'スペースキーで飛び降りる！';
+	showMessage(L('start'), 2.6);
+	$('hint').textContent = isTouch ? L('hintTouch') : L('hintKey');
 }
 
 function jump() {
@@ -340,7 +347,7 @@ function jump() {
 	$('hint').textContent = '';
 	sound.jump();
 	sound.playSong('flight');
-	showMessage('とうっ！\n清水の舞台から\n飛び降りた！', 2);
+	showMessage(L('jump'), 2);
 }
 
 function endGame(title, reason, clear = false) {
@@ -357,8 +364,8 @@ function endGame(title, reason, clear = false) {
 	$('result-dist').textContent = `${dist.toFixed(2)} km`;
 	$('result-time').textContent = formatTime(flight.time);
 	$('result-spots').textContent = flight.checkpoints.length
-		? `通過: ${flight.checkpoints.join(' → ')}`
-		: 'アドバルーンは割れなかった…';
+		? L('visited', flight.checkpoints)
+		: L('noBalloons');
 	const rank = rankOf(flight.checkpoints.length, flight.distance);
 	const ranked = clear || (rank <= 10 && (flight.checkpoints.length > 0 || flight.distance > 50));
 	$('result-title').classList.toggle('clear', clear);
@@ -366,7 +373,7 @@ function endGame(title, reason, clear = false) {
 	$('rank-no').textContent = rank;
 	$('result-name').value = localStorage.getItem('kiyomizu-name') || '';
 	$('btn-save').disabled = false;
-	$('btn-save').textContent = '記録する';
+	$('btn-save').textContent = L('save');
 	showMessage(title, 1.4);
 	setTimeout(() => {
 		if (state !== 'over') return;
@@ -428,17 +435,17 @@ $('btn-ranking').addEventListener('click', () => { renderRanking(); showScreen('
 $('btn-to-title').addEventListener('click', toTitle);
 document.querySelectorAll('.close').forEach((b) => b.addEventListener('click', () => showScreen('title')));
 $('btn-save').addEventListener('click', () => {
-	const name = $('result-name').value.trim() || '名無しの参拝者';
+	const name = $('result-name').value.trim() || L('anonymous');
 	localStorage.setItem('kiyomizu-name', name);
 	saveRanking({ name, cp: flight.checkpoints.length, dist: flight.distance, date: Date.now() });
 	$('btn-save').disabled = true;
-	$('btn-save').textContent = '記録しました';
+	$('btn-save').textContent = L('saved');
 	sound.turboGet();
 });
 $('btn-share').addEventListener('click', () => {
-	const text = `清水の舞台から飛び降りるつもりで、紅葉の京都の空を ${(flight.distance / 1000).toFixed(2)}km 飛んでアドバルーンを ${flight.checkpoints.length} 個割った！🎈`;
+	const text = L('share', (flight.distance / 1000).toFixed(2), flight.checkpoints.length);
 	const url = SHARE_URL;
-	open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=${encodeURIComponent('清水の舞台から飛び降りるつもり')}`, '_blank');
+	open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=${encodeURIComponent(L('hashtag'))}`, '_blank');
 });
 
 function toTitle() {
@@ -476,7 +483,7 @@ function renderRanking() {
 	const list = loadRanking();
 	body.innerHTML = '';
 	if (!list.length) {
-		body.innerHTML = '<tr><td colspan="5">まだ記録がありません</td></tr>';
+		body.innerHTML = `<tr><td colspan="5">${L('noRecords')}</td></tr>`;
 		return;
 	}
 	list.forEach((r, i) => {
@@ -525,7 +532,7 @@ function updateHud() {
 	$('oni').classList.toggle('hidden', !Number.isFinite(od));
 	if (Number.isFinite(od)) {
 		$('oni-dist').textContent = (od >= 1000 ? `${(od / 1000).toFixed(1)}km` : `${od.toFixed(0)}m`)
-			+ (flight.chasers > 1 ? ` ・追跡中×${flight.chasers}` : flight.chasers ? ' ・追跡中' : '');
+			+ (flight.chasers ? L('chasing', flight.chasers) : '');
 		$('oni').classList.toggle('danger', flight.chasers > 0);
 	}
 	const oc = flight.oniChase;
@@ -538,7 +545,7 @@ function updateHud() {
 		const rel = MathUtils.radToDeg(bearing - glider.yaw) - 90;
 		const dy = p.y - glider.position.y;
 		$('target-arrow').style.transform = `rotate(${rel}deg)`;
-		$('target-name').textContent = `🎈 ${near.item.spot.name}`;
+		$('target-name').textContent = `🎈 ${spotName(near.item.spot)}`;
 		$('target-info').textContent = `${near.distance >= 1000 ? `${(near.distance / 1000).toFixed(2)}km` : `${near.distance.toFixed(0)}m`}  ${dy >= 0 ? '↑' : '↓'}${Math.abs(dy).toFixed(0)}m`;
 	}
 }
@@ -678,7 +685,7 @@ function setEra(era) {
 		people = new People(scene, SPOTS, terrain, buildings, { perSpot, era });
 	}, 350);
 	if (state === 'flying' || state === 'ready') {
-		showMessage(showaEra ? '⏳ 昭和初期へ\nタイムスリップ！' : '⏳ 現代に\nもどってきた！', 1.8);
+		showMessage(showaEra ? L('toShowa') : L('toNow'), 1.8);
 	}
 }
 
@@ -687,7 +694,7 @@ function checkCollision(prev) {
 	worldToGeo(glider.position, geo);
 	const ground = terrain.heightAt(geo.lat, geo.lon);
 	if (geo.height <= ground + 0.8) {
-		return { title: '着陸！', reason: '地面に降り立ちました。' };
+		return { title: L('landed')[0], reason: L('landed')[1] };
 	}
 	if (flight.grace > 0 || !buildings) return null;
 	// 前フレームとの間を細かく調べて、建物に入ったか
@@ -697,32 +704,32 @@ function checkCollision(prev) {
 		if (buildings.hit(tmpV)) {
 			const roof = glider.velocity.y < 0 && Math.abs(glider.velocity.y) > Math.hypot(glider.velocity.x, glider.velocity.z) * 0.15;
 			return roof
-				? { title: '屋根に着地！', reason: '建物の屋根に降り立ちました。' }
-				: { title: 'ドーン！', reason: '建物にぶつかってしまいました。' };
+				? { title: L('roof')[0], reason: L('roof')[1] }
+				: { title: L('crash')[0], reason: L('crash')[1] };
 		}
 	}
 	const b = terrain.bounds();
 	if (geo.lat > b.north || geo.lat < b.south || geo.lon < b.west || geo.lon > b.east) {
-		return { title: '京都の外へ…', reason: '京都盆地を飛び出してしまいました。' };
+		return { title: L('outside')[0], reason: L('outside')[1] };
 	}
 	return null;
 }
 
 function onPop(it) {
-	flight.checkpoints.push(it.spot.name);
+	flight.checkpoints.push(spotName(it.spot));
 	glider.addJet(TURBO_SEC);
 	sound.pop();
 	sound.turboGet();
 	launchFireworks(5, false, 0.3);
 	sound.cheer();
 	if (flight.checkpoints.length >= SPOTS.length) {
-		endGame('🏯 全制覇！ 🏯', '京都の名所をすべてめぐりました！ 鬼からも逃げ切った！', true);
+		endGame(...L('clear'), true);
 		return;
 	}
 	const unpopped = balloons.items.filter((b) => !b.popped).map((b) => b.base);
 	const more = oni.addForCheckpoint(flight.checkpoints.length, glider, unpopped);
 	if (more) setTimeout(() => sound.oniLaugh(), 900);
-	showMessage(`🎆 チェックポイント！ 🎆\n${it.spot.name}\nターボ +1 🚀${more ? `\n👹 見張りの鬼が増えた！ (${oni.list.length}匹)` : ''}`, 2.6);
+	showMessage(L('checkpoint', spotName(it.spot)) + (more ? L('moreOni', oni.list.length) : ''), 2.6);
 }
 
 // 鬼ごっこ: 鬼の動きと、近づいたときの演出
@@ -732,11 +739,11 @@ function updateOni(dt, active) {
 	const r = oni.update(dt, glider, active);
 	if (!active) return;
 	if (r.spawned) {
-		showMessage(`👹 鬼が${r.spawned.length}匹、京都を徘徊中…\n見つからないように！`, 2.6);
+		showMessage(L('spawned', r.spawned.length), 2.6);
 	}
 	if (r.found.length) {
 		sound.oniLaugh();
-		showMessage(r.found.length > 1 ? `👹 鬼${r.found.length}匹に見つかった！` : '👹 鬼に見つかった！\n逃げろ〜！', 1.8);
+		showMessage(r.found.length > 1 ? L('foundMany', r.found.length) : L('found'), 1.8);
 	}
 	flight.oniDist = r.nearest;
 	flight.oniChase = r.nearestChase;
@@ -762,7 +769,7 @@ function updateOni(dt, active) {
 		sound.heartbeat();
 		heartTimer = 0.35 + (r.nearestChase / 180) * 0.8;
 	}
-	if (r.caught) endGame('つかまった！', '鬼に捕まってしまいました… 👹');
+	if (r.caught) endGame(...L('caught'));
 }
 
 // ---------- メインループ ----------
@@ -819,13 +826,13 @@ function loop(now) {
 		if (glider.jetting && !flight.wasJetting) sound.jetStart();
 		if (input.jet && hadFuel && glider.jetFuel <= 0) {
 			sound.jetEmpty();
-			showMessage('ターボ切れ！', 1.2);
+			showMessage(L('noTurbo'), 1.2);
 		}
 		flight.wasJetting = glider.jetting;
 		const inThermal = lift > 0.8;
 		if (inThermal && !flight.inThermal) {
 			sound.thermalEnter();
-			showMessage('✨ 上昇気流！', 1.2);
+			showMessage(L('thermal'), 1.2);
 		}
 		flight.inThermal = inThermal;
 
@@ -934,7 +941,7 @@ async function init() {
 	await buildMinimapBase();
 
 	// 舞台周辺の建物ができるまで待つ
-	$('load-text').textContent = '紅葉の京都の街並みを組み立て中…';
+	$('load-text').textContent = L('loadingTown');
 	for (let i = 0; i < 300 && buildings.readyAround(startPos, 1500) < 1; i++) {
 		$('load-fill').style.width = `${(85 + buildings.readyAround(startPos, 1500) * 15).toFixed(0)}%`;
 		await new Promise((r) => setTimeout(r, 100));
@@ -984,7 +991,7 @@ async function warmupShaders() {
 
 init().catch((e) => {
 	console.error(e);
-	$('load-text').textContent = `読み込みに失敗しました: ${e.message}`;
+	$('load-text').textContent = L('loadFailed', e.message);
 });
 
 // デバッグ用
