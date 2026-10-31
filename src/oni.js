@@ -186,6 +186,7 @@ export class Oni {
 		this.scene = scene;
 		this.list = [];
 		this.time = 0;
+		this.calm = 0;
 		this.nextSpawn = FIRST_SPAWN;
 		this.homes = [];
 		this.heightAt = () => 0;
@@ -208,6 +209,7 @@ export class Oni {
 		for (const o of this.list) this.scene.remove(o.obj);
 		this.list = [];
 		this.time = 0;
+		this.calm = 0;
 		this.nextSpawn = FIRST_SPAWN;
 	}
 
@@ -256,11 +258,26 @@ export class Oni {
 		return home ? this.spawnAt(home) : null;
 	}
 
+	// 広告を見て続きから飛ぶとき: 追いかけていた鬼と近くの鬼を持ち場に戻し、少しの間は見つからないようにする
+	scatter(glider, calm = 5) {
+		for (const o of this.list) {
+			if (o.state !== 'chase' && o.pos.distanceTo(glider.position) > LOSE) continue;
+			o.state = 'wander';
+			o.pos.copy(o.home);
+			o.pos.y = this.heightAt(o.home.x, o.home.z) + 120;
+			o.vel.set(0, 0, 0);
+			o.ground = undefined;
+			this.pickWaypoint(o);
+		}
+		this.calm = calm;
+	}
+
 	// 戻り値: { spawned, found (見つけた鬼), nearest, nearestChase, caught }
 	update(dt, glider, active) {
 		const out = { spawned: null, found: [], nearest: Infinity, nearestChase: Infinity, caught: false };
 		if (active) {
 			this.time += dt;
+			this.calm = Math.max(0, this.calm - dt);
 			if (this.time >= this.nextSpawn && !this.list.length) {
 				out.spawned = this.chooseHomes(FIRST_COUNT, glider.position, SAFE_START).map((h) => this.spawnAt(h));
 			}
@@ -300,7 +317,7 @@ export class Oni {
 					o.vel.lerp(desired, Math.min(1, dt * 0.9));
 					out.nearestChase = Math.min(out.nearestChase, d);
 				} else {
-					if (d < DETECT) {
+					if (d < DETECT && !this.calm) {
 						// 見つけた！
 						o.state = 'chase';
 						out.found.push(o);

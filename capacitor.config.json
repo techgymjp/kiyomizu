@@ -1,0 +1,8 @@
+{
+  "appId": "jp.techgym.kiyomizu",
+  "appName": "清水ダイブ",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#5ec8ff"
+  }
+}

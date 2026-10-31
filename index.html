@@ -9,6 +9,9 @@
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 	<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800;900&display=swap" rel="stylesheet" />
 	<link rel="stylesheet" href="./src/style.css" />
+	<!-- アプリのビルドで書き換わる設定 (広告の種類・バージョン) -->
+	<script src="./ads-config.js"></script>
+	<script src="./build-info.js"></script>
 </head>
 <body>
 	<canvas id="view"></canvas>
@@ -102,13 +105,18 @@
 				地形・空中写真: <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル</a>
 				／ 建物: <a href="https://www.mlit.go.jp/plateau/" target="_blank" rel="noopener">国土交通省 Project PLATEAU</a>（京都市 3D都市モデル）をもとに作成
 			</p>
+			<p id="legal" class="legal hidden">
+				<span id="build-info"></span>
+				<a id="privacy-link" href="https://techgym.jp/privacy-policy/" target="_blank" rel="noopener" data-i18n="privacy">プライバシーポリシー</a>
+				<a id="ad-privacy" href="#" class="hidden" data-i18n="adPrivacy">広告の設定</a>
+			</p>
 		</div>
 	</div>
 
 	<div id="howto" class="screen hidden">
 		<div class="card">
 			<h2 data-i18n="howtoTitle">❓ 遊び方</h2>
-			<ul class="howto" data-i18n="howtoList">
+			<ul class="howto" id="howto-list" data-i18n="howtoList">
 				<li><span class="key">👹</span><span><b>鬼ごっこ</b>！ 鬼が20匹、京都の名所のまわりを徘徊している。近づくと見つかって追いかけてくる。捕まったら負け。アドバルーンを1個割るごとに鬼が1匹増え、時間がたつと速くなる</span></li>
 				<li><span class="key">🎯</span><span>名所のアドバルーンを割ってチェックポイント通過！ 花火があがって<b>ターボ +1</b>。全部割ったらクリア</span></li>
 				<li><span class="key">↑ ↓</span><span>↑で上昇、↓で下降（スピードアップ）</span></li>
@@ -121,7 +129,7 @@
 				<li><span class="key">⚠</span><span>地面や建物に降りたらゲーム終了。スピードが落ちすぎると失速！</span></li>
 				<li><span class="key">📱</span><span>スマホは左下スティックで操縦、右のボタンでターボ</span></li>
 			</ul>
-			<button class="close btn big" data-i18n="ok">OK！</button>
+			<button id="btn-howto-ok" class="close btn big" data-i18n="ok">OK！</button>
 		</div>
 	</div>
 
@@ -132,7 +140,7 @@
 				<thead data-i18n="rankingHead"><tr><th>#</th><th>名前</th><th>🎈</th><th>距離</th><th>日付</th></tr></thead>
 				<tbody id="ranking-body"></tbody>
 			</table>
-			<button class="close btn big" data-i18n="close">とじる</button>
+			<button id="btn-ranking-close" class="close btn big" data-i18n="close">とじる</button>
 		</div>
 	</div>
 
@@ -162,7 +170,21 @@
 	</div>
 
 	<div id="pause" class="screen hidden">
-		<div class="card"><h2 data-i18n="pause">⏸ 一時停止</h2><button id="btn-resume" class="btn big" data-i18n="resume">再開 (P)</button></div>
+		<div class="card">
+			<h2 data-i18n="pause">⏸ 一時停止</h2>
+			<button id="btn-resume" class="btn big" data-i18n="resume">再開 (P)</button>
+			<button id="btn-pause-title" class="btn sub" data-i18n="toTitle">🏠 タイトル</button>
+		</div>
+	</div>
+
+	<!-- 広告を見て続きから飛ぶ (アプリのみ) -->
+	<div id="continue" class="screen hidden">
+		<div class="card continue-card">
+			<h2 data-i18n="contTitle">😣 もう一度チャンス！</h2>
+			<p id="cont-note"></p>
+			<button id="btn-cont-watch" class="btn big">🎬 広告を見て続きから飛ぶ</button>
+			<button id="btn-cont-skip" class="btn sub">結果を見る</button>
+		</div>
 	</div>
 
 	<script type="module" src="./src/main.js"></script>

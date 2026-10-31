@@ -479,3 +479,13 @@ body.showa #view { filter: sepia(0.18) saturate(0.9) contrast(1.04); }
 @media (max-width: 720px) {
 	#oni { top: auto; bottom: 258px; left: 12px; transform: none; font-size: 16px; padding: 5px 12px; }
 }
+
+/* ---------- Android アプリ ---------- */
+/* 画面の下中央に出るバナー広告 (高さ 50dp) と重ならないよう、メニューの画面は下をあける */
+body.app .screen { padding-bottom: 62px; }
+.legal { font-size: 11px; color: #8a80a0; margin: 8px 0 0; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.legal a { color: #6a6080; }
+#pause .card, .continue-card { text-align: center; }
+#btn-pause-title { margin-top: 12px; }
+.continue-card #cont-note { margin: 4px 0 16px; font-weight: 800; color: #5a4f78; }
+#btn-cont-skip { margin-top: 12px; }

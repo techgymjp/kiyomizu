@@ -229,6 +229,14 @@ export class Sound {
 		if (this.pendingSong) this.playSong(this.pendingSong);
 	}
 
+	// 裏に回ったときや全画面広告の間は音を止める
+	suspend() {
+		if (this.ctx && this.ctx.state === 'running') this.ctx.suspend();
+	}
+	resume() {
+		if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+	}
+
 	setMuted(m) {
 		this.muted = m;
 		if (this.master) this.master.gain.setTargetAtTime(m ? 0 : this.volume, this.ctx.currentTime, 0.05);

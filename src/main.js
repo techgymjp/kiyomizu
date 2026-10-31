@@ -20,12 +20,21 @@ import { buildStage, STAGE, START_POINT } from './stage.js';
 import { Oni } from './oni.js';
 import { buildProps } from './props.js';
 import { LANDMARK_SPECS } from './landmarkSpecs.js';
+import { createAds } from './ads.js';
 
 const $ = (id) => document.getElementById(id);
 const TURBO_SEC = 5; // ターボ1つぶんの噴射時間
 const START_TURBOS = 1;
 // シェアするページ (ゲームの紹介記事)
 const SHARE_URL = 'https://techgym.jp/column/claude-code-game-kiyomizu/';
+// Android アプリ (Capacitor) で動いているか。Web 版では Capacitor がないので何もしない
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+const plugin = (name) => (NATIVE ? window.Capacitor.Plugins?.[name] ?? null : null);
+if (NATIVE) document.body.classList.add('app');
+// 広告を見て続きから飛べる回数 (1 ゲームあたり)
+const CONTINUE_MAX = 3;
+const CONTINUE_DELAY = 2.5; // 失敗の様子を見届けてから案内を出す (秒)
+const CONTINUE_WAIT = 6; // 案内を出しておく時間 (秒)。過ぎたら結果画面へ
 
 // ---------- 設定 ----------
 const settings = {
@@ -141,6 +150,7 @@ scene.add(glider.object);
 const sound = new Sound();
 sound.era = settings.era; // 昭和初期で始めたときは BGM も昭和の曲に
 sound.setMuted(settings.muted);
+const ads = createAds(sound);
 const fireworks = new Fireworks(scene);
 const oni = new Oni(scene);
 let buildings = null;
@@ -307,7 +317,7 @@ let flight = null;
 let titleTime = 0;
 
 function newFlight() {
-	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false, oniDist: Infinity, oniChase: Infinity, chasers: 0, alarm: false, alarmTimer: 0, clear: false };
+	return { distance: 0, time: 0, checkpoints: [], grace: 1.2, wasJetting: false, inThermal: false, oniDist: Infinity, oniChase: Infinity, chasers: 0, alarm: false, alarmTimer: 0, clear: false, continues: 0, trail: [], trailTimer: 0 };
 }
 
 function placeOnStage() {
@@ -357,15 +367,27 @@ function endGame(title, reason, clear = false) {
 	if (clear) sound.turboGet();
 	else sound.crash();
 	$('touch').classList.add('hidden');
+	showMessage(title, 1.4);
+	const offer = !clear && ads.canReward && flight.continues < CONTINUE_MAX;
+	setTimeout(() => {
+		if (state !== 'over') return;
+		if (offer) showContinue(title, reason);
+		else showResult(title, reason);
+	}, (offer ? CONTINUE_DELAY : 1.5) * 1000);
+}
+
+// 結果画面
+function showResult(title, reason) {
+	const clear = flight.clear;
 	const dist = flight.distance / 1000;
 	$('result-title').textContent = title;
 	$('result-reason').textContent = reason;
 	$('result-cp').textContent = `${flight.checkpoints.length}`;
 	$('result-dist').textContent = `${dist.toFixed(2)} km`;
 	$('result-time').textContent = formatTime(flight.time);
-	$('result-spots').textContent = flight.checkpoints.length
+	$('result-spots').textContent = (flight.checkpoints.length
 		? L('visited', flight.checkpoints)
-		: L('noBalloons');
+		: L('noBalloons')) + (flight.continues ? L('continued', flight.continues) : '');
 	const rank = rankOf(flight.checkpoints.length, flight.distance);
 	const ranked = clear || (rank <= 10 && (flight.checkpoints.length > 0 || flight.distance > 50));
 	$('result-title').classList.toggle('clear', clear);
@@ -374,18 +396,86 @@ function endGame(title, reason, clear = false) {
 	$('result-name').value = localStorage.getItem('kiyomizu-name') || '';
 	$('btn-save').disabled = false;
 	$('btn-save').textContent = L('save');
-	showMessage(title, 1.4);
-	setTimeout(() => {
-		if (state !== 'over') return;
-		showScreen('result');
-		if (ranked) {
-			// ランキング入り・全制覇: お祝いのファンファーレと花火
-			sound.playSong('ranking');
-			celebrate();
-		} else {
-			sound.playSong('gameover');
-		}
-	}, 1500);
+	showScreen('result');
+	if (ranked) {
+		// ランキング入り・全制覇: お祝いのファンファーレと花火
+		sound.playSong('ranking');
+		celebrate();
+	} else {
+		sound.playSong('gameover');
+	}
+}
+
+// ---------- リワード広告: 広告を見て続きから飛ぶ (アプリのみ・1 ゲーム 3 回まで) ----------
+// ぶつかったり鬼に捕まったりしたら「広告を見て続きから飛ぶ」を出す。見終わると、少し前の位置の少し上から飛び直す。
+// 鬼は持ち場に戻る。使った回数は結果画面とシェア文に出る
+const cont = { active: false, busy: false, t: 0, timer: 0, title: '', reason: '' };
+function showContinue(title, reason) {
+	Object.assign(cont, { active: true, busy: false, t: CONTINUE_WAIT, title, reason });
+	$('btn-cont-watch').disabled = false;
+	$('btn-cont-watch').textContent = L('contWatch');
+	$('cont-note').textContent = L('contNote', CONTINUE_MAX - flight.continues);
+	$('btn-cont-skip').textContent = L('contSkip', CONTINUE_WAIT);
+	showScreen('continue');
+	clearInterval(cont.timer);
+	cont.timer = setInterval(() => {
+		if (!cont.active || cont.busy) return;
+		cont.t -= 0.25;
+		$('btn-cont-skip').textContent = L('contSkip', Math.max(0, Math.ceil(cont.t)));
+		if (cont.t <= 0) closeContinue(true);
+	}, 250);
+}
+function closeContinue(toResult) {
+	if (!cont.active) return;
+	cont.active = false;
+	clearInterval(cont.timer);
+	if (toResult && state === 'over') showResult(cont.title, cont.reason);
+}
+$('btn-cont-skip').addEventListener('click', () => closeContinue(true));
+$('btn-cont-watch').addEventListener('click', async () => {
+	if (!cont.active || cont.busy) return;
+	cont.busy = true;
+	$('btn-cont-watch').disabled = true;
+	$('btn-cont-watch').textContent = L('contLoading');
+	const result = await ads.showRewarded();
+	if (!cont.active) return;
+	if (result === 'unavailable') {
+		$('cont-note').textContent = L('contFail');
+		setTimeout(() => closeContinue(true), 2000);
+		return;
+	}
+	if (result !== 'rewarded') {
+		closeContinue(true);
+		return;
+	}
+	closeContinue(false);
+	revive();
+});
+
+// 少し前 (4 秒ほど前) にいた場所の少し上から、同じ向きで飛び直す
+function revive() {
+	const snap = flight.trail[Math.max(0, flight.trail.length - 8)] ?? { pos: startPos.clone().setY(startPos.y + 60), yaw: START_POINT.heading * MathUtils.DEG2RAD };
+	const pos = snap.pos.clone();
+	pos.y = Math.max(pos.y + 30, terrain.heightAtWorld(pos.x, pos.z) + 80);
+	const fuel = glider.jetFuel;
+	glider.reset(pos, snap.yaw);
+	glider.gamma = 0;
+	glider.speed = 16;
+	glider.jetFuel = fuel;
+	glider.syncObject();
+	oni.scatter(glider);
+	flight.continues++;
+	flight.trail = [];
+	flight.grace = 2;
+	flight.alarm = false;
+	flight.alarmTimer = 0;
+	state = 'flying';
+	hideScreens();
+	if (isTouch) $('touch').classList.remove('hidden');
+	chaseInit = false;
+	sound.jump();
+	sound.playSong('flight');
+	showMessage(L('contGo'), 2);
 }
 
 // 画面の前方に花火を上げる (音も合わせる)
@@ -408,6 +498,26 @@ function togglePause() {
 	}
 }
 
+// ---------- 全画面広告 (アプリのみ) ----------
+// プレイを始めるとき・タイトルに戻るとき・ポーズからの再開・もう一度飛ぶときに、毎回出す
+let adBusy = false;
+async function withInterstitial(next) {
+	if (adBusy) return;
+	if (ads.available) {
+		adBusy = true;
+		hideScreens();
+		await ads.showInterstitial(3000);
+		adBusy = false;
+	}
+	next();
+}
+
+// バナー広告: タイトル・遊び方・ポーズ・結果の画面だけ (プレイ中は操作ボタンと重なるので出さない)
+function updateBanner() {
+	const open = (id) => !$(id).classList.contains('hidden');
+	ads.setBanner(!adBusy && (open('title') || open('howto') || open('pause') || open('result')));
+}
+
 // ---------- 画面 ----------
 function showScreen(id) {
 	hideScreens();
@@ -427,13 +537,15 @@ function showMessage(text, sec = 2.2) {
 	messageTimer = setTimeout(() => el.classList.remove('show'), sec * 1000);
 }
 
-$('btn-start').addEventListener('click', startGame);
-$('btn-retry').addEventListener('click', startGame);
-$('btn-resume').addEventListener('click', togglePause);
+$('btn-start').addEventListener('click', () => withInterstitial(startGame));
+$('btn-retry').addEventListener('click', () => withInterstitial(startGame));
+$('btn-resume').addEventListener('click', () => { if (state === 'paused') withInterstitial(togglePause); });
+$('btn-pause-title').addEventListener('click', () => { if (state === 'paused') withInterstitial(toTitle); });
 $('btn-howto').addEventListener('click', () => showScreen('howto'));
 $('btn-ranking').addEventListener('click', () => { renderRanking(); showScreen('ranking'); });
-$('btn-to-title').addEventListener('click', toTitle);
-document.querySelectorAll('.close').forEach((b) => b.addEventListener('click', () => showScreen('title')));
+$('btn-to-title').addEventListener('click', () => withInterstitial(toTitle));
+$('btn-howto-ok').addEventListener('click', () => withInterstitial(() => showScreen('title')));
+$('btn-ranking-close').addEventListener('click', () => showScreen('title'));
 $('btn-save').addEventListener('click', () => {
 	const name = $('result-name').value.trim() || L('anonymous');
 	localStorage.setItem('kiyomizu-name', name);
@@ -442,11 +554,55 @@ $('btn-save').addEventListener('click', () => {
 	$('btn-save').textContent = L('saved');
 	sound.turboGet();
 });
-$('btn-share').addEventListener('click', () => {
-	const text = L('share', (flight.distance / 1000).toFixed(2), flight.checkpoints.length);
+$('btn-share').addEventListener('click', async () => {
+	const text = L('share', (flight.distance / 1000).toFixed(2), flight.checkpoints.length) + (flight.continues ? L('continued', flight.continues) : '');
 	const url = SHARE_URL;
+	// アプリでは Android の共有メニューを出す
+	const share = plugin('Share');
+	if (share) {
+		try {
+			await share.share({ title: document.title, text: `${text} #${L('hashtag')}`, url, dialogTitle: L('shareDialog') });
+		} catch { /* キャンセル */ }
+		return;
+	}
 	open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=${encodeURIComponent(L('hashtag'))}`, '_blank');
 });
+
+// 別のアプリに切り替えたら一時停止して音を止める (広告の表示中は広告側が音を止めている)
+document.addEventListener('visibilitychange', () => {
+	if (document.hidden) {
+		if (state === 'flying') togglePause();
+		sound.suspend();
+	} else if (!ads.showing) {
+		sound.resume();
+	}
+});
+
+// Android の戻るボタン: 飛行中は一時停止 (一時停止中なら再開)、遊び方・ランキングはタイトルへ、
+// タイトル・結果画面ではアプリを終了
+plugin('App')?.addListener('backButton', () => {
+	if (adBusy || ads.showing) return;
+	const open = (id) => !$(id).classList.contains('hidden');
+	if (state === 'flying') togglePause();
+	else if (state === 'paused') withInterstitial(togglePause);
+	else if (cont.active) closeContinue(true);
+	else if (open('howto')) withInterstitial(() => showScreen('title'));
+	else if (open('ranking')) showScreen('title');
+	else if (state === 'ready') toTitle();
+	else if (state !== 'over' || open('result')) plugin('App').exitApp();
+});
+
+// アプリではタイトル画面の下にバージョン・プライバシーポリシー・広告の設定 (EU など) を出す
+if (NATIVE) {
+	$('legal').classList.remove('hidden');
+	if (window.APP_VERSION && window.APP_VERSION !== 'dev') $('build-info').textContent = window.APP_VERSION;
+	if (lang === 'en') $('privacy-link').href = 'https://techgym.jp/privacy-policy-en/';
+	ads.initDone.then(() => { if (ads.privacyOptionsRequired) $('ad-privacy').classList.remove('hidden'); });
+	$('ad-privacy').addEventListener('click', (e) => { e.preventDefault(); ads.showPrivacyOptions(); });
+	// 遊び方と案内は、キーではなく画面のボタンで説明する
+	$('howto-list').innerHTML = L('howtoApp').map(([k, v]) => `<li><span class="key">${k}</span><span>${v}</span></li>`).join('');
+	$('btn-resume').textContent = L('resumeApp');
+}
 
 function toTitle() {
 	state = 'title';
@@ -820,6 +976,13 @@ function loop(now) {
 		flight.time += dt;
 		flight.grace -= dt;
 		flight.distance += Math.hypot(glider.position.x - prev.x, glider.position.z - prev.z);
+		// 続きから飛ぶときのために、0.5 秒ごとの位置と向きを 5 秒ぶん覚えておく
+		flight.trailTimer -= dt;
+		if (flight.trailTimer <= 0) {
+			flight.trailTimer = 0.5;
+			flight.trail.push({ pos: glider.position.clone(), yaw: glider.yaw });
+			if (flight.trail.length > 10) flight.trail.shift();
+		}
 		vario = glider.velocity.y;
 
 		// 効果音のきっかけ
@@ -850,6 +1013,7 @@ function loop(now) {
 	if (state !== 'flying') updateOni(dt, false);
 	// 警報が鳴っている間は画面のふちを赤く点滅させる
 	dangerEl.classList.toggle('alarm', state === 'flying' && !!flight?.alarm);
+	updateBanner();
 	mark('oni');
 	if (thermals) thermals.update(time);
 	fireworks.update(dt);
@@ -996,7 +1160,7 @@ init().catch((e) => {
 
 // デバッグ用
 window.__kiyomizu = {
-	debug, geoToWorld, glider, terrain, camera, startGame, jump,
+	debug, geoToWorld, glider, ads, terrain, camera, startGame, jump,
 	get state() { return state; }, get flight() { return flight; }, get frames() { return frames; },
 	buildings: () => buildings, balloons: () => balloons, fireworks, sound, oni, Vector3, prof, renderer, people: () => people, showa: () => showa, setEra,
 };
