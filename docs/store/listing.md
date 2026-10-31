@@ -94,3 +94,8 @@ Buildings: based on MLIT Project PLATEAU (Kyoto City 3D city model)
 | 画像 | ファイル |
 | --- | --- |
 | アイコン 512×512 | `docs/store/icon-512.png` |
+| スクリーンショット 1080×1920(日本語 4 枚) | `docs/store/ja-1-title.png` 〜 `ja-4-showa.png` |
+| スクリーンショット 1080×1920(英語 4 枚) | `docs/store/en-1-title.png` 〜 `en-4-showa.png` |
+| フィーチャーグラフィック 1024×500 | (未作成) |
+
+スクリーンショットはブラウザ (ソフトウェア描画) で撮った下書きです。実機で撮ると、地形の写真がもっと細かく写ります。
