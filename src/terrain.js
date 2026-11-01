@@ -1,6 +1,6 @@
 // 国土地理院の標高タイル(dem_png)と空中写真(seamlessphoto)から京都の地形を生成する
 import {
-	BufferGeometry, Float32BufferAttribute, Mesh, MeshLambertMaterial, Group,
+	BufferGeometry, BufferAttribute, Float32BufferAttribute, Mesh, MeshLambertMaterial, Group,
 	CanvasTexture, SRGBColorSpace, Vector3,
 } from 'three';
 import { geoToWorld, worldToGeo, lonToTileX, latToTileY, tileXToLon, tileYToLat } from './geo.js';
@@ -27,6 +27,24 @@ const HI_RES = [[17, 1300], [16, 3000]];
 // スマホは z17 を使わない (メモリと転送を節約)
 const HI_RES_MOBILE = [[16, 2000]];
 const HI_RES_HYSTERESIS = 1200;
+// スマホは遠くの地形の網目を粗くして軽くする (頂点はそのままで、何個おきにつなぐかだけ変える)
+const LOD_MOBILE = [[2500, 1], [6000, 2], [Infinity, 4]];
+
+// 網目のつなぎ方 (step 個おきの頂点をつなぐ)。全チャンクで共有する
+const indexCache = new Map();
+function gridIndex(step) {
+	if (!indexCache.has(step)) {
+		const s = SEGMENTS, index = [];
+		for (let j = 0; j < s; j += step) {
+			for (let i = 0; i < s; i += step) {
+				const a = j * (s + 1) + i, b = a + step, c = a + step * (s + 1), d = c + step;
+				index.push(a, c, b, b, c, d);
+			}
+		}
+		indexCache.set(step, new BufferAttribute(new Uint16Array(index), 1));
+	}
+	return indexCache.get(step);
+}
 
 function decodeDem(bitmap) {
 	const canvas = new OffscreenCanvas(256, 256);
@@ -241,18 +259,14 @@ export class Terrain {
 				uvs[idx * 2 + 1] = 1 - j / s;
 			}
 		}
-		const index = [];
-		for (let j = 0; j < s; j++) {
-			for (let i = 0; i < s; i++) {
-				const a = j * (s + 1) + i, b = a + 1, c = a + s + 1, d = c + 1;
-				index.push(a, c, b, b, c, d);
-			}
-		}
 		const geom = new BufferGeometry();
 		geom.setAttribute('position', new Float32BufferAttribute(positions, 3));
 		geom.setAttribute('uv', new Float32BufferAttribute(uvs, 2));
-		geom.setIndex(index);
+		geom.setIndex(gridIndex(1));
 		geom.computeVertexNormals();
+		// スマホの遠景 (外側の広いチャンク) は最初から粗く
+		chunk.step = this.mobile && chunk.z === COARSE_Z ? 4 : 1;
+		if (chunk.step !== 1) geom.setIndex(gridIndex(chunk.step));
 		geom.computeBoundingSphere();
 		const mat = autumn(new MeshLambertMaterial({ color: 0x6b7a5a }));
 		chunk.mesh = new Mesh(geom, mat);
@@ -356,10 +370,22 @@ export class Terrain {
 		return 0;
 	}
 
+	setStep(chunk, step) {
+		if (chunk.step === step) return;
+		chunk.step = step;
+		chunk.mesh.geometry.setIndex(gridIndex(step));
+	}
+
 	update(playerPos) {
 		this.player.copy(playerPos);
 		if (!this.ready) return;
 		this.updateCoarse(playerPos);
+		if (this.mobile) {
+			for (const c of this.fine.values()) {
+				const d = Math.hypot(c.center.x - playerPos.x, c.center.z - playerPos.z);
+				this.setStep(c, LOD_MOBILE.find(([max]) => d < max)[1]);
+			}
+		}
 		let loading = 0;
 		for (const c of this.fine.values()) if (c.hiLoading) loading++;
 		const list = [...this.fine.values()]

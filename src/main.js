@@ -68,7 +68,8 @@ $('opt-mute').addEventListener('change', (e) => {
 const canvas = $('view');
 // スマホは描画の負荷を下げる (解像度・アンチエイリアス・表示距離・人の数・ワイプの更新頻度)
 const mobile = matchMedia('(pointer: coarse)').matches;
-const renderer = new WebGLRenderer({ canvas, antialias: !mobile, logarithmicDepthBuffer: true });
+// 対数深度バッファは遠くまでちらつかずに描けるが、スマホの GPU では重い (描く前の奥行き判定が効かなくなる) ので使わない
+const renderer = new WebGLRenderer({ canvas, antialias: !mobile, logarithmicDepthBuffer: !mobile });
 // 本番ではシェーダーのエラーログ取得を省く (初回描画時に処理が止まるのを避ける)
 renderer.debug.checkShaderErrors = !import.meta.env.PROD;
 renderer.setPixelRatio(Math.min(devicePixelRatio, settings.quality === 'high' ? 2 : mobile ? 1 : 1.25));
@@ -86,7 +87,8 @@ const scene = new Scene();
 // 秋晴れの澄んだ空気 (遠くだけうっすら青く)
 scene.fog = new Fog(new Color(0xa9d4f5), 6000, 32000);
 
-const camera = new PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 60000);
+// 対数深度バッファを使わないスマホは、手前の描画範囲を少し広げて奥行きの精度を保つ
+const camera = new PerspectiveCamera(65, innerWidth / innerHeight, mobile ? 0.5 : 0.1, 60000);
 // ワイプは遠くまで描く必要がないので描画距離を短くする
 const wipeCamera = new PerspectiveCamera(55, 16 / 10, 0.5, 3500);
 // ワイプは低い解像度で別の画像に描き、それを画面に貼る (1フレームおきに更新して軽くする)
@@ -159,6 +161,7 @@ let thermals = null;
 let people = null;
 let showa = null;
 const perSpot = mobile ? 30 : 60;
+const activeDist = mobile ? 900 : 1600; // この距離より近い名所の人だけ描く
 
 const startPos = new Vector3(START_POINT.x, STAGE.floor + 1.3, START_POINT.z);
 const tmpV = new Vector3();
@@ -838,7 +841,7 @@ function setEra(era) {
 		buildings.setEra(era);
 		showa.setVisible(showaEra);
 		people.dispose();
-		people = new People(scene, SPOTS, terrain, buildings, { perSpot, era });
+		people = new People(scene, SPOTS, terrain, buildings, { perSpot, era, activeDist });
 	}, 350);
 	if (state === 'flying' || state === 'ready') {
 		showMessage(showaEra ? L('toShowa') : L('toNow'), 1.8);
@@ -1078,7 +1081,7 @@ function loop(now) {
 // ---------- 起動 ----------
 async function init() {
 	requestAnimationFrame(loop);
-	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1100 : mobile ? 500 : 700, far: mobile ? 2600 : 3800, era: settings.era });
+	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1100 : mobile ? 500 : 700, far: mobile ? 2200 : 3800, era: settings.era });
 	await buildings.init();
 	await terrain.init((p) => {
 		$('load-fill').style.width = `${(p * 85).toFixed(0)}%`;
@@ -1095,7 +1098,7 @@ async function init() {
 
 	balloons = new Balloons(scene, SPOTS, terrain);
 	thermals = new Thermals(scene, THERMALS, terrain);
-	people = new People(scene, SPOTS, terrain, buildings, { perSpot, era: settings.era });
+	people = new People(scene, SPOTS, terrain, buildings, { perSpot, era: settings.era, activeDist });
 	// 昭和の町並み (市電・電柱・銭湯の煙突・屋上のアドバルーン・二代目京都駅)
 	showa = new Showa(scene, (x, z) => terrain.heightAtWorld(x, z));
 	showa.setVisible(settings.era === 'showa');
@@ -1127,12 +1130,15 @@ async function warmupShaders() {
 	scene.add(extra);
 	// 隠れているものも含めて全部見える状態にする / 元に戻す (途中でゲームループが動かないよう同期的に使う)
 	const showAll = () => {
-		const hidden = [], culled = [];
+		const hidden = [], culled = [], empty = [];
 		scene.traverse((o) => {
 			if (!o.visible) { hidden.push(o); o.visible = true; }
 			if (o.frustumCulled) { culled.push(o); o.frustumCulled = false; }
+			// 今は誰もいない人の群れ (近づくと描く) も 1 人だけ描いておく
+			if (o.isInstancedMesh && o.count === 0) { empty.push(o); o.count = 1; }
 		});
 		return () => {
+			for (const o of empty) o.count = 0;
 			for (const o of culled) o.frustumCulled = true;
 			for (const o of hidden) o.visible = false;
 		};

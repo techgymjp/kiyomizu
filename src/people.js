@@ -223,8 +223,10 @@ const KINDS = {
 };
 
 export class People {
-	constructor(scene, spots, terrain, buildings, { perSpot = PER_SPOT, era = 'now' } = {}) {
+	// activeDist: この距離より近い人だかりだけ描く (スマホは短くして軽くする)
+	constructor(scene, spots, terrain, buildings, { perSpot = PER_SPOT, era = 'now', activeDist = ACTIVE_DIST } = {}) {
 		this.scene = scene;
+		this.activeDist = activeDist;
 		this.terrain = terrain;
 		this.buildings = buildings;
 		const mat = new MeshLambertMaterial({ vertexColors: true });
@@ -245,7 +247,7 @@ export class People {
 					r -= rate;
 				}
 				crowd.people.push({
-					kind, idx: counts[kind]++, x: 0, z: 0, y: 0, tx: 0, tz: 0, heading: 0,
+					kind, idx: counts[kind]++, colors: [], x: 0, z: 0, y: 0, tx: 0, tz: 0, heading: 0,
 					// 侍はゆっくり堂々と歩く
 					speed: { samurai: 0.55, maiko: 0.45, rickshaw: 2.2 }[kind] ?? 0.6 + Math.random() * 0.45,
 					phase: Math.random() * 10, wait: Math.random() * 6, placed: false,
@@ -253,7 +255,7 @@ export class People {
 			}
 		}
 		this.meshes = {};
-		const col = new Color();
+		const people = this.crowds.flatMap((c) => c.people);
 		for (const [kind, def] of Object.entries(KINDS)) {
 			const n = Math.max(1, counts[kind]);
 			const list = [];
@@ -262,9 +264,15 @@ export class People {
 				m.instanceMatrix.setUsage(DynamicDrawUsage);
 				m.frustumCulled = false;
 				m.castShadow = true;
+				m.count = 0;
+				// 着物などの色は人ごとに決めておく (近くの人だけを前から詰めて描くので、描く位置が変わっても色が変わらないように)
+				const slot = list.length;
+				for (const p of people) {
+					if (p.kind === kind) p.colors[slot] = colors ? new Color(colors[Math.floor(Math.random() * colors.length)]) : null;
+				}
 				if (colors) {
-					for (let i = 0; i < n; i++) m.setColorAt(i, col.set(colors[Math.floor(Math.random() * colors.length)]));
-					m.instanceColor.needsUpdate = true;
+					m.setColorAt(0, new Color());
+					m.instanceColor.setUsage(DynamicDrawUsage);
 				}
 				scene.add(m);
 				list.push(m);
@@ -275,7 +283,7 @@ export class People {
 			this.meshes[kind] = list;
 		}
 		this.dummy = new Object3D();
-		this.hideAll();
+		this.slots = Object.fromEntries(Object.keys(KINDS).map((k) => [k, 0]));
 	}
 
 	// 時代を切り替えるときに作り直すため
@@ -288,18 +296,13 @@ export class People {
 		}
 	}
 
+	// 近くの人だけを、種類ごとに前から詰めて書き込む (遠くの人は描かない)
 	setMatrix(p, matrix) {
-		for (const m of this.meshes[p.kind]) m.setMatrixAt(p.idx, matrix);
-	}
-
-	hideAll() {
-		this.dummy.scale.setScalar(0);
-		this.dummy.updateMatrix();
-		for (const list of Object.values(this.meshes)) {
-			for (const m of list) {
-				for (let i = 0; i < m.count; i++) m.setMatrixAt(i, this.dummy.matrix);
-				m.instanceMatrix.needsUpdate = true;
-			}
+		const i = this.slots[p.kind]++;
+		const list = this.meshes[p.kind];
+		for (let k = 0; k < list.length; k++) {
+			list[k].setMatrixAt(i, matrix);
+			if (p.colors[k]) list[k].setColorAt(i, p.colors[k]);
 		}
 	}
 
@@ -326,14 +329,10 @@ export class People {
 	update(dt, time, gliderPos) {
 		let cheer = false;
 		const d = this.dummy;
+		for (const k in this.slots) this.slots[k] = 0;
 		for (const crowd of this.crowds) {
 			const dist = Math.hypot(crowd.center.x - gliderPos.x, crowd.center.z - gliderPos.z);
-			if (dist >= ACTIVE_DIST) {
-				if (crowd.active) {
-					d.scale.setScalar(0);
-					d.updateMatrix();
-					for (const p of crowd.people) this.setMatrix(p, d.matrix);
-				}
+			if (dist >= this.activeDist) {
 				crowd.active = false;
 				continue;
 			}
@@ -396,7 +395,13 @@ export class People {
 				this.setMatrix(p, d.matrix);
 			}
 		}
-		for (const list of Object.values(this.meshes)) for (const m of list) m.instanceMatrix.needsUpdate = true;
+		for (const [kind, list] of Object.entries(this.meshes)) {
+			for (const m of list) {
+				m.count = this.slots[kind];
+				m.instanceMatrix.needsUpdate = true;
+				if (m.instanceColor) m.instanceColor.needsUpdate = true;
+			}
+		}
 		return cheer;
 	}
 }
