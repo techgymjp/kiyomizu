@@ -72,7 +72,8 @@ const mobile = matchMedia('(pointer: coarse)').matches;
 const renderer = new WebGLRenderer({ canvas, antialias: !mobile, logarithmicDepthBuffer: !mobile });
 // 本番ではシェーダーのエラーログ取得を省く (初回描画時に処理が止まるのを避ける)
 renderer.debug.checkShaderErrors = !import.meta.env.PROD;
-renderer.setPixelRatio(Math.min(devicePixelRatio, settings.quality === 'high' ? 2 : mobile ? 1 : 1.25));
+// スマホ (かるい) は画面の 0.75 倍の解像度で描いて引き伸ばす (文字やボタンは HTML なのでぼやけない)
+renderer.setPixelRatio(Math.min(devicePixelRatio, settings.quality === 'high' ? 2 : mobile ? 0.75 : 1.25));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = SRGBColorSpace;
 renderer.toneMapping = ACESFilmicToneMapping;
@@ -465,6 +466,7 @@ function revive() {
 	glider.gamma = 0;
 	glider.speed = 16;
 	glider.jetFuel = fuel;
+	glider.addJet(TURBO_SEC); // 続きから飛ぶときはターボを 1 つプレゼント
 	glider.syncObject();
 	oni.scatter(glider);
 	flight.continues++;
@@ -477,8 +479,9 @@ function revive() {
 	if (isTouch) $('touch').classList.remove('hidden');
 	chaseInit = false;
 	sound.jump();
+	sound.turboGet();
 	sound.playSong('flight');
-	showMessage(L('contGo'), 2);
+	showMessage(L('contGo'), 2.4);
 }
 
 // 画面の前方に花火を上げる (音も合わせる)
@@ -1081,7 +1084,7 @@ function loop(now) {
 // ---------- 起動 ----------
 async function init() {
 	requestAnimationFrame(loop);
-	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1100 : mobile ? 500 : 700, far: mobile ? 2200 : 3800, era: settings.era });
+	buildings = new Buildings(scene, `${import.meta.env.BASE_URL}buildings/`, { near: shadows ? 1100 : mobile ? 400 : 700, far: mobile ? 1900 : 3800, era: settings.era, lite: mobile });
 	await buildings.init();
 	await terrain.init((p) => {
 		$('load-fill').style.width = `${(p * 85).toFixed(0)}%`;
@@ -1096,7 +1099,7 @@ async function init() {
 	buildings.addStandalone(specs.filter((l) => l.standalone));
 	buildProps(scene, (x, z) => terrain.heightAtWorld(x, z));
 
-	balloons = new Balloons(scene, SPOTS, terrain);
+	balloons = new Balloons(scene, SPOTS, terrain, { lite: mobile });
 	thermals = new Thermals(scene, THERMALS, terrain);
 	people = new People(scene, SPOTS, terrain, buildings, { perSpot, era: settings.era, activeDist });
 	// 昭和の町並み (市電・電柱・銭湯の煙突・屋上のアドバルーン・二代目京都駅)

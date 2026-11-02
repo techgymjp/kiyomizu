@@ -56,12 +56,13 @@ function labelTexture(text) {
 }
 
 export class Balloons {
-	constructor(scene, spots, terrain) {
+	// lite: スマホ向けに玉の形を簡単にする
+	constructor(scene, spots, terrain, { lite = false } = {}) {
 		this.group = new Group();
 		scene.add(this.group);
 		this.items = [];
 		this.particles = [];
-		const sphere = new SphereGeometry(BALLOON_RADIUS, 32, 20);
+		const sphere = lite ? new SphereGeometry(BALLOON_RADIUS, 16, 12) : new SphereGeometry(BALLOON_RADIUS, 32, 20);
 
 		spots.forEach((spot, i) => {
 			const color = COLORS[i % COLORS.length];

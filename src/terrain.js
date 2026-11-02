@@ -28,7 +28,7 @@ const HI_RES = [[17, 1300], [16, 3000]];
 const HI_RES_MOBILE = [[16, 2000]];
 const HI_RES_HYSTERESIS = 1200;
 // スマホは遠くの地形の網目を粗くして軽くする (頂点はそのままで、何個おきにつなぐかだけ変える)
-const LOD_MOBILE = [[2500, 1], [6000, 2], [Infinity, 4]];
+const LOD_MOBILE = [[1500, 1], [4000, 2], [Infinity, 4]];
 
 // 網目のつなぎ方 (step 個おきの頂点をつなぐ)。全チャンクで共有する
 const indexCache = new Map();

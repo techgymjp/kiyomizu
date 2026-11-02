@@ -282,7 +282,8 @@ export function showaHeight(b) {
 }
 
 // era: 'now' | 'showa' (昭和初期は高い建物を低くし、木造の町並みにする)
-export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, era = 'now') {
+// minArea: 遠景 (detail 0) で省く小さな建物の面積 (m²)
+export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, era = 'now', minArea = 50) {
 	const B = new Builder();
 	const showa = era === 'showa';
 	const custom = assignLandmarks(list, landmarks, bounds);
@@ -294,7 +295,7 @@ export function buildChunkGeometry(list, detail, landmarks = [], bounds = null, 
 			continue;
 		}
 		const area = Math.abs(ringArea(b.ring));
-		if (!detail && area < 50 && b.type !== TYPE.SACRED) continue;
+		if (!detail && area < minArea && b.type !== TYPE.SACRED) continue;
 		const h = hash(b.ring[0], b.ring[1]);
 		const height = showa ? showaHeight(b) : b.height;
 		if (height === null) continue;

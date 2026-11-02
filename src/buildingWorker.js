@@ -2,10 +2,10 @@
 import { parseChunk, buildChunkGeometry } from './buildingMesh.js';
 
 self.onmessage = (e) => {
-	const { id, buffer, ox, oz, size, detail, landmarks, era } = e.data;
+	const { id, buffer, ox, oz, size, detail, landmarks, era, minArea } = e.data;
 	const list = parseChunk(buffer, ox, oz);
 	const bounds = { x0: ox, x1: ox + size, z0: oz, z1: oz + size };
-	const arrays = buildChunkGeometry(list, detail, landmarks, bounds, era);
+	const arrays = buildChunkGeometry(list, detail, landmarks, bounds, era, minArea);
 	// 包み込む球もここで計算しておく (メインスレッドで計算すると一瞬止まる)
 	const p = arrays.position;
 	let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;

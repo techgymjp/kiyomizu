@@ -36,6 +36,7 @@ function createMaterial() {
 // 街路樹 (イチョウ・モミジ・ケヤキの紅葉)
 const TREE_COLORS = [['#f5c61e', '#ffd84a', '#e8b10c'], ['#d8301c', '#ee5a24', '#c21f2c'], ['#d07a26', '#b85c1c', '#e0962e']];
 const crownGeom = new IcosahedronGeometry(2.4, 1).scale(1, 1.25, 1).translate(0, 5.2, 0);
+const crownGeomLite = new IcosahedronGeometry(2.4, 0).scale(1, 1.25, 1).translate(0, 5.2, 0); // スマホ用 (三角形 1/4)
 const trunkGeom = new CylinderGeometry(0.22, 0.3, 3.6, 6).translate(0, 1.8, 0);
 const crownMat = new MeshLambertMaterial({ color: 0xffffff, flatShading: true });
 const trunkMat = new MeshLambertMaterial({ color: 0x5a3e2b });
@@ -51,8 +52,10 @@ function releaseAfterUpload(geom) {
 
 export class Buildings {
 	// near: これより近いチャンクは詳細表示、far: これより遠いチャンクは表示しない (m)
-	constructor(scene, baseUrl, { near = 1400, far = 3800, era = 'now' } = {}) {
+	// lite: スマホ向けに軽くする (遠景の小さな建物を省く・街路樹を簡単な形にして近くだけに)
+	constructor(scene, baseUrl, { near = 1400, far = 3800, era = 'now', lite = false } = {}) {
 		this.far = far;
+		this.lite = lite;
 		this.releaseDist = far + 1000;
 		this.era = era;
 		this.landmarks = null; // setLandmarks されるまで建物を作らない
@@ -106,7 +109,7 @@ export class Buildings {
 		const era = this.era;
 		const landmarks = this.landmarks.filter((l) => l.x > ox - 60 && l.x < ox + size + 60 && l.z > oz - 60 && l.z < oz + size + 60
 			&& !(era === 'showa' && l.kind === 'tower'));
-		this.worker.postMessage({ id, buffer: chunk.buffer.slice(0), ox, oz, size, detail, landmarks, era });
+		this.worker.postMessage({ id, buffer: chunk.buffer.slice(0), ox, oz, size, detail, landmarks, era, minArea: this.lite ? 70 : 50 });
 		this.jobs.set(id, (arrays, sphere) => {
 			this.busy--;
 			chunk.building = false;
@@ -202,7 +205,7 @@ export class Buildings {
 	buildTrees(chunk) {
 		const dv = new DataView(chunk.trees);
 		const n = dv.getUint32(4, true);
-		const crowns = new InstancedMesh(crownGeom, crownMat, n);
+		const crowns = new InstancedMesh(this.lite ? crownGeomLite : crownGeom, crownMat, n);
 		const trunks = new InstancedMesh(trunkGeom, trunkMat, n);
 		const o = new Object3D(), c = new Color();
 		for (let i = 0; i < n; i++) {
@@ -250,7 +253,7 @@ export class Buildings {
 				if (c.buffer || c.mesh) this.release(c);
 				continue;
 			}
-			if (d > this.far * 0.7) this.removeTrees(c);
+			if (d > this.far * (this.lite ? 0.45 : 0.7)) this.removeTrees(c);
 			else if (c.trees && !c.treeMeshes) this.buildTrees(c);
 			if (d > this.far) {
 				if (c.mesh) {
