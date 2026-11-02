@@ -35,7 +35,7 @@ App Store 用は別のファイルにします(iOS 化するとき)。
 ・左下のスティックで操縦(上に倒すと上昇、下に倒すと下降してスピードアップ)
 ・「ターボ」ボタンで噴射
 ・光の粒が昇る上昇気流の中で旋回すると、高度を上げられます
-・地面や建物にぶつかったらゲーム終了。広告を見ると続きから飛べます(1 回のゲームで 3 回まで)
+・地面や建物にぶつかったらゲーム終了。広告を見ると続きから飛べて、ターボも 1 つもらえます(1 回のゲームで 3 回まで)
 
 ■ そのほか
 ・この端末のランキング
@@ -79,7 +79,7 @@ The music changes to an old-time Showa pop tune, too.
 - Steer with the stick at the bottom left (push up to climb, pull down to dive and speed up)
 - Boost with the "Turbo" button
 - Circle inside a thermal, where sparkles rise, to gain height
-- Hit the ground or a building and the game ends. Watch an ad to keep flying (up to 3 times a game)
+- Hit the ground or a building and the game ends. Watch an ad to keep flying and get a bonus turbo (up to 3 times a game)
 
 ■ Also
 - Rankings on your device
@@ -96,6 +96,6 @@ Buildings: based on MLIT Project PLATEAU (Kyoto City 3D city model)
 | アイコン 512×512 | `docs/store/icon-512.png` |
 | スクリーンショット 1080×1920(日本語 4 枚) | `docs/store/ja-1-title.png` 〜 `ja-4-showa.png` |
 | スクリーンショット 1080×1920(英語 4 枚) | `docs/store/en-1-title.png` 〜 `en-4-showa.png` |
-| フィーチャーグラフィック 1024×500 | (未作成) |
+| フィーチャーグラフィック 1024×500 | `docs/store/feature-ja.png`(日本語)/ `feature-en.png`(英語) |
 
 スクリーンショットはブラウザ (ソフトウェア描画) で撮った下書きです。実機で撮ると、地形の写真がもっと細かく写ります。
