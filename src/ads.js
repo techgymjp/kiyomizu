@@ -11,11 +11,11 @@ export function createAds(sound) {
 				rewarded: 'ca-app-pub-3940256099942544/5224354917',
 				banner: 'ca-app-pub-3940256099942544/6300978111',
 			},
-			// 本番の広告ユニット (AdMob の Android アプリ「清水ダイブ」)。届いたら入れる
+			// 本番の広告ユニット (AdMob の Android アプリ「清水ダイブ」)。空の種類は届いたら入れる
 			production: {
 				interstitial: '',
 				rewarded: '',
-				banner: '',
+				banner: 'ca-app-pub-6411535997477460/3370607558',
 			},
 		},
 		ios: {
