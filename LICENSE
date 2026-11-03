@@ -42,7 +42,7 @@ by the terms above:
 
 - three.js — MIT License, Copyright 2010-2025 Three.js Authors. Installed from npm at build time.
 - 3d-tiles-renderer — Apache License 2.0, Copyright NASA-AMMOS. Installed from npm at build time.
-- Capacitor and @capacitor-community/admob (Android app) — MIT License. Installed from npm at build time.
+- Capacitor and @capacitor-community/admob (Android and iOS apps) — MIT License. Installed from npm at build time.
 - Terrain and aerial photos: GSI Tiles, Geospatial Information Authority of Japan (国土地理院 地理院タイル).
   Loaded from the GSI tile server while playing, under the GSI Content Terms of Use.
 - Street trees (public/trees/): created from GSI Vector Tiles (road centerlines).

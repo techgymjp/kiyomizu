@@ -88,6 +88,19 @@ AdMob のアプリ ID は `android/app/src/main/res/values/strings.xml` の `adm
 アイコンと起動画面は `assets/` の元画像から `npx @capacitor/assets generate --android` で生成しています。
 ストア用の画像と紹介文は `docs/store/` にあります。
 
+## iOS アプリ
+
+Android 版と同じ Capacitor のプロジェクトに `ios/` を足して作っています。構成は techgymjp/jet-fighter(JET STRIKE)の `docs/ANDROID_PORTING.md` 7 章と同じです。
+Mac での作業手順(ビルド・TestFlight・審査)は [`docs/IOS_BUILD.md`](docs/IOS_BUILD.md) にあります。
+
+- Bundle ID: `jp.techgym.kiyomizu`(Android と同じ)。iPhone 専用・縦画面固定・全画面・プレイ中は画面を消さない
+- 切り欠き(Dynamic Island)とホームバーをよけて表示し、戻るボタンの代わりに飛行中の右上に一時停止ボタン ⏸
+- 広告は Android と同じ場面に出る。起動時に App Tracking Transparency の確認(説明文は日英)
+- AdMob の iOS 用アプリ ID は `ios/App/App/Info.plist` の `GADApplicationIdentifier`、広告ユニット ID は `src/ads.js` の `UNITS.ios`
+- `npm run ios:sync`(テスト広告)/ `npm run ios:release`(本番広告。App Store 用)→ `npm run ios:open` で Xcode を開く
+- GitHub Actions: `.github/workflows/ios.yml` で push のたびにビルドできるかを確認(署名なし)。`ios-release.yml` は Secrets を登録すると TestFlight へ自動でアップロード
+- App Store 用の掲載情報と画像は `docs/store/ios/`
+
 ## ライセンス
 
 このリポジトリの内容の著作権はテックジム株式会社に帰属します(All rights reserved)。許可なく複製・改変・再配布すること、
