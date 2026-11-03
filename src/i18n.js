@@ -63,8 +63,9 @@ const STR = {
 			['⏳', '「時代」ボタンで、飛びながら<b>現代 ⇔ 昭和初期</b>にタイムスリップ！ 市電や銭湯の煙突、二代目京都駅が見られる'],
 			['✨', '光の粒が昇る場所は<b>上昇気流</b>。中で旋回すると高度アップ'],
 			['⚠', '地面や建物に降りたらゲーム終了。スピードが落ちすぎると失速！ 広告を見ると続きから飛べて、ターボも1つもらえる (1回のゲームで3回まで)'],
-			['◁', '戻るボタンで一時停止'],
 		],
+		howtoPause: '右上の ⏸ ボタンで一時停止',
+		howtoPauseAndroid: '右上の ⏸ ボタンか、戻るボタンで一時停止',
 	},
 	en: {
 		start: '🎌 The Kiyomizu Stage 🎌\nStarting with Turbo ×1!',
@@ -115,8 +116,9 @@ const STR = {
 			['⏳', 'The "Era" button time-slips between <b>today ⇔ early Showa</b> mid-flight! See streetcars, bathhouse chimneys and the old Kyoto Station'],
 			['✨', 'Where sparkles rise there is a <b>thermal</b>. Circle inside it to gain height'],
 			['⚠', 'Touch the ground or a building and the game ends. Fly too slowly and you stall! Watch an ad to keep flying and get a bonus turbo (up to 3 times a game)'],
-			['◁', 'Press Back to pause'],
 		],
+		howtoPause: 'Tap the ⏸ button at the top right to pause',
+		howtoPauseAndroid: 'Tap the ⏸ button at the top right, or press Back, to pause',
 	},
 };
 

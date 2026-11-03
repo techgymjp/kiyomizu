@@ -1,7 +1,7 @@
 {
   "name": "kiyomizu",
   "version": "1.0.0",
-  "description": "清水の舞台から飛び降りるつもり - 京都の空を飛ぶハングライダーゲーム (Web / Android)",
+  "description": "清水の舞台から飛び降りるつもり - 京都の空を飛ぶハングライダーゲーム (Web / Android / iOS)",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,13 +10,17 @@
     "build:app": "node scripts/build-web.js",
     "preview": "vite preview",
     "android:sync": "npm run build:app && npx cap sync android",
-    "android:open": "npx cap open android"
+    "android:open": "npx cap open android",
+    "ios:sync": "npm run build:app && npx cap sync ios",
+    "ios:release": "ADMOB_MODE=production npm run build:app && npx cap sync ios",
+    "ios:open": "npx cap open ios"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.2.1",
     "@capacitor/android": "8.5.2",
     "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
     "@capacitor/share": "8.0.3",
     "3d-tiles-renderer": "0.4.18",
     "three": "0.180.0"

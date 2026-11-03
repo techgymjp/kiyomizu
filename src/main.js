@@ -247,6 +247,7 @@ const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in win
 	jetBtn.addEventListener('pointerleave', jetOff);
 	$('touch-cam').addEventListener('pointerdown', (e) => { e.preventDefault(); toggleCamera(); });
 	$('touch-era').addEventListener('pointerdown', (e) => { e.preventDefault(); setEra(settings.era === 'showa' ? 'now' : 'showa'); });
+	$('touch-pause').addEventListener('pointerdown', (e) => { e.preventDefault(); if (state === 'flying') togglePause(); });
 	canvas.addEventListener('pointerdown', () => { if (state === 'ready') jump(); });
 })();
 
@@ -606,7 +607,9 @@ if (NATIVE) {
 	ads.initDone.then(() => { if (ads.privacyOptionsRequired) $('ad-privacy').classList.remove('hidden'); });
 	$('ad-privacy').addEventListener('click', (e) => { e.preventDefault(); ads.showPrivacyOptions(); });
 	// 遊び方と案内は、キーではなく画面のボタンで説明する
-	$('howto-list').innerHTML = L('howtoApp').map(([k, v]) => `<li><span class="key">${k}</span><span>${v}</span></li>`).join('');
+	// 一時停止は ⏸ ボタン (Android は戻るボタンでも)
+	const howto = [...L('howtoApp'), ['⏸', L(window.Capacitor.getPlatform?.() === 'android' ? 'howtoPauseAndroid' : 'howtoPause')]];
+	$('howto-list').innerHTML = howto.map(([k, v]) => `<li><span class="key">${k}</span><span>${v}</span></li>`).join('');
 	$('btn-resume').textContent = L('resumeApp');
 }
 

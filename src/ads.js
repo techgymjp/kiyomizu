@@ -24,6 +24,7 @@ export function createAds(sound) {
 				rewarded: 'ca-app-pub-3940256099942544/1712485313',
 				banner: 'ca-app-pub-3940256099942544/2934735716',
 			},
+			// 本番の広告ユニット (AdMob の iOS アプリ「清水ダイブ」)。届いたら入れる
 			production: {
 				interstitial: '',
 				rewarded: '',
