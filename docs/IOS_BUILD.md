@@ -144,6 +144,8 @@ Google の「Apple の App Store のデータ開示要件への準備」（AdMob
 4. Regional differences: None, except that the ad consent form appears only where required (e.g. EEA/UK).
 
 5. Regulated content / third-party material: The game is not in a regulated industry. Terrain and aerial photos are GSI Tiles by the Geospatial Information Authority of Japan (commercial use allowed with attribution), and buildings are based on Project PLATEAU 3D city models by MLIT Japan (CC BY 4.0 compatible); both are credited in the app. All other graphics and sounds are original.
+
+6. Uniqueness (Guideline 4.3): This is not a template, reskin or duplicate of another app. The game was designed and written from scratch for this title: a hang-gliding flight model (gliding, stalls, thermals and turbo), a 3D model of the whole Kyoto basin built from real terrain, aerial photos and over 500,000 buildings, hand-made 3D models of Kyoto landmarks such as pagodas, temples, shrines and Kyoto Tower at 42 sights, oni-tag chase AI, a time slip between present-day and early-Showa-era Kyoto (old aerial photos, streetcars and period townspeople), and original music synthesized in real time. Our other games are separate, original games in different genres with their own gameplay, graphics and sounds; they share only the general app shell (Capacitor) and the ad integration code. We submit this game under a single app and Bundle ID, in Japanese and English, with no other versions of it on the App Store.
 ```
 
 入力が終わったら「審査用に追加」→「審査へ提出」。
