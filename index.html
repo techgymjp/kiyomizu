@@ -12,6 +12,8 @@
 	<!-- アプリのビルドで書き換わる設定 (広告の種類・バージョン) -->
 	<script src="./ads-config.js"></script>
 	<script src="./build-info.js"></script>
+	<!-- アプリ (Capacitor) の中では Google Play へのリンクを出さない -->
+	<script>if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) document.documentElement.classList.add('app');</script>
 </head>
 <body>
 	<canvas id="view"></canvas>
@@ -81,6 +83,7 @@
 					<button id="btn-howto" class="btn sub" data-i18n="howto">❓ 遊び方</button>
 				</div>
 			</div>
+			<p class="store-link"><a id="play-link" href="https://play.google.com/store/apps/details?id=jp.techgym.kiyomizu" target="_blank" rel="noopener" data-i18n="playLink">📱 Android アプリ版（Google Play）</a></p>
 			<div class="settings">
 				<label><span data-i18n="quality">画質</span>
 					<select id="opt-quality">

@@ -601,6 +601,7 @@ plugin('App')?.addListener('backButton', () => {
 
 // アプリではタイトル画面の下にバージョン・プライバシーポリシー・広告の設定 (EU など) を出す
 if (NATIVE) {
+	document.querySelector('.store-link')?.remove(); // アプリの中では Google Play へのリンクを出さない
 	$('legal').classList.remove('hidden');
 	if (window.APP_VERSION && window.APP_VERSION !== 'dev') $('build-info').textContent = window.APP_VERSION;
 	if (lang === 'en') $('privacy-link').href = 'https://techgym.jp/privacy-policy-en/';
