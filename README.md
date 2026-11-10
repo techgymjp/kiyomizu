@@ -74,6 +74,7 @@ PLATEAU のデータは [PLATEAU Policy](https://www.mlit.go.jp/plateau/site-pol
 ビルドは GitHub Actions(`.github/workflows/android.yml`)で行います。
 
 1. `npm ci` → `npm run build:app`(Vite で `www/` に書き出し、`ads-config.js` と `build-info.js` を生成)→ `npx cap sync android` → `./gradlew assembleDebug`
+   - `build:app` では、Web 版だけの部分(タイトル画面の Google Play へのリンク、デバッグ用の `window.__kiyomizu`)を取り除く。目印は HTML が `<!-- web-only -->` … `<!-- /web-only -->`、JS が `// web-only:start` … `// web-only:end`、CSS が `/* web-only:start */` … `/* web-only:end */`(`vite.config.js`)。`play.google.com` などが残っていたらビルドを止める。アプリの中で隠すのではなく、最初から入れない(App Store の審査で「審査中に隠した機能」〔Guideline 5.6〕と見られないように)
 2. 既定ブランチなら、Release `android-latest` の `kiyomizu.apk` を差し替え(動作確認用・テスト広告)
    - リリース画面: https://github.com/techgymjp/kiyomizu/releases/tag/android-latest
    - APK 直接: https://github.com/techgymjp/kiyomizu/releases/latest/download/kiyomizu.apk

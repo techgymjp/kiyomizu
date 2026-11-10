@@ -601,7 +601,6 @@ plugin('App')?.addListener('backButton', () => {
 
 // アプリではタイトル画面の下にバージョン・プライバシーポリシー・広告の設定 (EU など) を出す
 if (NATIVE) {
-	document.querySelector('.store-link')?.remove(); // アプリの中では Google Play へのリンクを出さない
 	$('legal').classList.remove('hidden');
 	if (window.APP_VERSION && window.APP_VERSION !== 'dev') $('build-info').textContent = window.APP_VERSION;
 	if (lang === 'en') $('privacy-link').href = 'https://techgym.jp/privacy-policy-en/';
@@ -1171,9 +1170,11 @@ init().catch((e) => {
 	$('load-text').textContent = L('loadFailed', e.message);
 });
 
-// デバッグ用
+// web-only:start
+// デバッグ用 (Web 版の開発・ストア画像の撮影に使う。アプリのビルドには入れない)
 window.__kiyomizu = {
 	debug, geoToWorld, glider, ads, terrain, camera, startGame, jump,
 	get state() { return state; }, get flight() { return flight; }, get frames() { return frames; },
 	buildings: () => buildings, balloons: () => balloons, fireworks, sound, oni, Vector3, prof, renderer, people: () => people, showa: () => showa, setEra,
 };
+// web-only:end

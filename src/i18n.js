@@ -192,7 +192,9 @@ const HTML_EN = {
 	pause: '⏸ Paused',
 	resume: 'Resume (P)',
 	privacy: 'Privacy Policy',
+	// web-only:start
 	playLink: '📱 Android app (Google Play)',
+	// web-only:end
 	adPrivacy: 'Ad settings',
 	contTitle: '😣 One more chance!',
 };
