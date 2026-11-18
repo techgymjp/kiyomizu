@@ -15,7 +15,7 @@ export function createAds(sound) {
 			production: {
 				interstitial: 'ca-app-pub-6411535997477460/4244705528',
 				rewarded: 'ca-app-pub-6411535997477460/5064009356',
-				banner: 'ca-app-pub-6411535997477460/3370607558',
+				banner: 'ca-app-pub-6411535997477460/8614897627',
 			},
 		},
 		ios: {
