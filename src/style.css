@@ -499,6 +499,7 @@ body.showa #view { filter: sepia(0.18) saturate(0.9) contrast(1.04); }
 /* web-only:start */
 /* Web 版のタイトル画面に出す Google Play へのリンク (アプリのビルドには入れない) */
 .store-link { margin: 10px 0 0; font-size: 13px; font-weight: 800; }
+.store-link + .store-link { margin-top: 4px; }
 .store-link a { color: var(--blue); }
 /* web-only:end */
 /* 画面の下中央に出るバナー広告 (高さ 50dp) と重ならないよう、メニューの画面は下をあける */

@@ -16,7 +16,7 @@ const scan = (dir) => {
 		if (f.isDirectory()) scan(p);
 		else if (/\.(html|js|css)$/.test(f.name)) {
 			const text = fs.readFileSync(p, 'utf8');
-			for (const word of ['play.google.com', 'web-only', 'store-link', '__kiyomizu']) if (text.includes(word)) leftovers.push(`${path.relative(out, p)}: ${word}`);
+			for (const word of ['play.google.com', 'apps.apple.com', 'web-only', 'store-link', '__kiyomizu']) if (text.includes(word)) leftovers.push(`${path.relative(out, p)}: ${word}`);
 		}
 	}
 };

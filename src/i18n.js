@@ -194,6 +194,7 @@ const HTML_EN = {
 	privacy: 'Privacy Policy',
 	// web-only:start
 	playLink: '📱 Android app (Google Play)',
+	appStoreLink: '📱 iPhone app (App Store)',
 	// web-only:end
 	adPrivacy: 'Ad settings',
 	contTitle: '😣 One more chance!',
