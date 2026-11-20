@@ -1,6 +1,6 @@
 {
   "name": "kiyomizu",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "清水の舞台から飛び降りるつもり - 京都の空を飛ぶハングライダーゲーム (Web / Android / iOS)",
   "private": true,
   "type": "module",
