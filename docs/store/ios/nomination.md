@@ -20,7 +20,7 @@ Take the Plunge from Kiyomizu turns a famous Japanese saying, "jump off the stag
 
 The whole Kyoto basin is rebuilt in 3D from open data: real terrain and aerial photos from Japan's Geospatial Information Authority and over 500,000 buildings from MLIT's Project PLATEAU, plus hand-made landmarks such as pagodas, temples and Kyoto Tower.
 
-The goal is to pop ad balloons over 42 famous sights while playing tag with oni, ogres from Japanese folklore. Thermals and turbo boosts help them escape.
+The goal is to pop ad balloons over 42 famous sights while playing tag with oni, ogres from Japanese folklore. Thermals and turbo boosts help players escape.
 
 A single tap on the "Era" button time-slips the city to the early Showa era: old aerial photos, streetcars, the former Kyoto Station and townspeople in period dress, with Showa-style music.
 
