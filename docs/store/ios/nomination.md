@@ -16,29 +16,29 @@ Apple の編集チームは世界中にいるので、説明は英語で書き�
 ## 説明(英語。そのまま貼る)
 
 ```
-Take the Plunge from Kiyomizu turns a famous Japanese saying, "to jump off the stage of Kiyomizu" (to take a bold leap), into a game. Players hang-glide off the real stage of Kiyomizu-dera and soar over Kyoto at the peak of autumn colors.
+Take the Plunge from Kiyomizu turns a famous Japanese saying, "jump off the stage of Kiyomizu" (take a bold leap), into a game: players hang-glide off the real stage of Kiyomizu-dera over Kyoto in autumn colors.
 
-The whole Kyoto basin is rebuilt in 3D from open data: real terrain and aerial photos from Japan's Geospatial Information Authority and over 500,000 buildings from MLIT's Project PLATEAU, with hand-made models of landmarks such as pagodas, temples, shrines and Kyoto Tower.
+The whole Kyoto basin is rebuilt in 3D from open data: real terrain and aerial photos from Japan's Geospatial Information Authority and over 500,000 buildings from MLIT's Project PLATEAU, plus hand-made landmarks such as pagodas, temples and Kyoto Tower.
 
-The goal is to pop ad balloons over 42 famous sights while playing tag with oni, ogres from Japanese folklore. When the alarm sounds, players ride thermals and use turbo boosts to escape.
+The goal is to pop ad balloons over 42 famous sights while playing tag with oni, ogres from Japanese folklore. Thermals and turbo boosts help them escape.
 
-A single tap on the "Era" button time-slips the city to the early Showa era: old aerial photos, streetcars, bathhouse chimneys, the former Kyoto Station and townspeople in period dress, with music that changes to a Showa-era pop style.
+A single tap on the "Era" button time-slips the city to the early Showa era: old aerial photos, streetcars, the former Kyoto Station and townspeople in period dress, with Showa-style music.
 
-The game is free, supports Japanese and English, and is a playful way to explore Kyoto's geography and history, especially in the autumn foliage season.
+Free, in Japanese and English, it is a playful way to explore Kyoto's geography and history, perfect for the autumn foliage season.
 ```
 
 ## 日本語訳(確認用)
 
 清水の舞台から飛び降りるつもりは、「清水の舞台から飛び降りる(思い切って決断する)」という有名なことわざをゲームにしたものです。
-本物の清水寺の舞台からハングライダーで飛び降り、紅葉まっさかりの京都の空を飛びます。
+本物の清水寺の舞台からハングライダーで飛び降り、紅葉の京都の空を飛びます。
 
-京都盆地全体を、オープンデータから 3D で再現しました。国土地理院の本物の地形と空中写真、国土交通省 PLATEAU の 50 万棟以上の建物に、塔・寺・神社・京都タワーなどの名所を手作りのモデルで加えています。
+京都盆地全体を、オープンデータから 3D で再現しました。国土地理院の本物の地形と空中写真、国土交通省 PLATEAU の 50 万棟以上の建物に、塔・寺・京都タワーなどの名所を手作りのモデルで加えています。
 
-目標は、鬼(日本の昔話の妖怪)と鬼ごっこをしながら、42 か所の名所のアドバルーンを割ること。警報が鳴ったら、上昇気流とターボで逃げ切ります。
+目標は、鬼(日本の昔話の妖怪)と鬼ごっこをしながら、42 か所の名所のアドバルーンを割ること。上昇気流とターボで逃げ切ります。
 
-「時代」ボタンをひと押しすると、町が昭和初期にタイムスリップします。昔の空中写真、市電、銭湯の煙突、二代目京都駅、当時の服装の町の人。BGM も昭和の流行歌風に変わります。
+「時代」ボタンをひと押しすると、町が昭和初期にタイムスリップします。昔の空中写真、市電、二代目京都駅、当時の服装の町の人。BGM も昭和風に変わります。
 
-無料で、日本語と英語に対応。京都の地理と歴史を遊びながら楽しめます。紅葉の季節にぴったりです。
+無料で日本語と英語に対応。京都の地理と歴史を遊びながら楽しめ、紅葉の季節にぴったりです。
 
 ---
 
